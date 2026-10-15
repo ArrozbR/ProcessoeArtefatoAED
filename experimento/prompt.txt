@@ -1,0 +1,5 @@
+Implemente o software descrito no documento de requisitos a seguir. Responda apenas com um único bloco de código Python contendo o arquivo biblioteca.py completo.
+
+<documento>
+{{DOCUMENTO}}
+</documento>

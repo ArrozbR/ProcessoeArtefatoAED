@@ -1,5 +1,43 @@
 # Atividade: Processo de Análise de Requisitos para Geração de Código com LLM
 
+## Entregáveis
+
+| # | Entregável | Arquivo |
+|---|---|---|
+| 1 | Processo ERL (Especificação de Requisitos para LLM) | [`entregaveis/1-processo.md`](entregaveis/1-processo.md) |
+| 2 | Artefato: modelo do documento de requisitos | [`entregaveis/2-modelo-documento-requisitos.md`](entregaveis/2-modelo-documento-requisitos.md) |
+| 3 | Instruções de preenchimento e checklist | [`entregaveis/3-instrucoes-preenchimento.md`](entregaveis/3-instrucoes-preenchimento.md) |
+| 4 | Relatório técnico do experimento | [`entregaveis/4-relatorio-tecnico.md`](entregaveis/4-relatorio-tecnico.md) |
+
+## Experimento
+
+| O quê | Onde |
+|---|---|
+| Documento preenchido no modelo (caso: biblioteca) | `experimento/especificacoes/biblioteca-modelo-erl.md` |
+| Especificação narrativa (grupo de controle) | `experimento/especificacoes/biblioteca-narrativa.md` |
+| Oráculo: um teste por critério de aceitação | `experimento/testes/test_aceitacao.py` |
+| Implementação de referência (valida o oráculo) | `experimento/referencia/biblioteca.py` |
+| Geração com LLM e medição | `experimento/executar.py` |
+| Estatística | `experimento/analisar.py` |
+| Dados brutos e código gerado | `experimento/resultados/` |
+
+Para reproduzir (Windows; requer `ANTHROPIC_API_KEY`):
+
+```bash
+cd experimento
+py -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt
+.venv/Scripts/python executar.py validar          # referência 64/64, stub 0/64, 8 mutantes detectados
+.venv/Scripts/python executar.py gerar --n 30     # 30 execuções por condição; retoma se interrompido
+.venv/Scripts/python analisar.py                  # gera resultados/resumo.md
+```
+
+O código gerado pela LLM é executado localmente pelos testes. Rode numa máquina que você controla.
+
+Decisões de projeto: [`docs/decisoes/`](docs/decisoes/).
+
+---
+
 ## Descrição da Atividade
 
 Cada grupo deverá:
