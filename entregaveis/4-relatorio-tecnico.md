@@ -1,7 +1,7 @@
 # Relatório Técnico — Conformidade entre documento de requisitos ERL e código gerado por LLM
 
 **Disciplina:** AED — Processo e Artefato  
-**Grupo:** Pedro Blamires Cordeiro, Adriano Faleiro Gregório, Gabriel Borges, Heitor Felipe Trindade Deodato, Jefferson Felex de Faria, Vinícius Rodrigues Gonçalves Ferreira  
+**Grupo:** Pedro Blamires Cordeiro, Adriano Faleiro Gregório, Gabriel Borges, Heitor Felipe Trindade Deodato, Jefferson Felex de Faria, Vinícius Rodrigues Gonçalves Ferreira, Gabriel Rodrigues do Vale  
 **Data:** 2026-10-15
 
 ---
