@@ -1,5 +1,22 @@
 # Atividade: Processo de Análise de Requisitos para Geração de Código com LLM
 
+## Nossa entrega — Processo PRECISA
+
+| # | Entregável | Arquivo |
+|---|---|---|
+| 1 | Processo de análise de requisitos | [docs/1-processo.md](docs/1-processo.md) |
+| 2 | Artefato — modelo do documento de requisitos (Markdown) | [docs/2-modelo-documento-requisitos.md](docs/2-modelo-documento-requisitos.md) |
+| 3 | Instruções de preenchimento | [docs/3-instrucoes-preenchimento.md](docs/3-instrucoes-preenchimento.md) |
+| 4 | Relatório técnico do experimento | [docs/4-relatorio-tecnico.md](docs/4-relatorio-tecnico.md) |
+| — | Exemplo preenchido (objeto do experimento) | [experimento/especificacao/ERS-BIB-001.md](experimento/especificacao/ERS-BIB-001.md) |
+| — | Kit do experimento (prompts, oráculo de testes, avaliador estatístico) | [experimento/](experimento/README.md) |
+
+Verificação rápida (requer só Python ≥ 3.10):
+
+```bash
+python experimento/avaliacao/validar_oraculo.py
+```
+
 ## Descrição da Atividade
 
 Cada grupo deverá:
