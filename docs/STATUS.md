@@ -18,15 +18,19 @@
 
 ## Diário de sessões
 
+### 2026-10-19
+- Feito: tentativa de replicar com o Gemini pela API gratuita. Os modelos "pro" não têm cota sem cartão e o `gemini-3.8-flash` respondeu só 503/429; abandonado, e as mudanças nos scripts foram descartadas. A PR `proposta-precisa` (processo PRECISA, sem resultados) foi comparada com a main e fechada.
+- Ficou confuso: nada.
+
 ### 2026-10-15
 - Feito: estrutura do repositório, os quatro entregáveis, especificações, oráculo validado e scripts. Sem orçamento para a API, a geração foi feita com agentes do Claude Code (ADR 0003, adendo). Piloto 5/5 e coleta 60/60 com 100%. H1 aceita (Wilcoxon p = 2,2e-8); H2 indeterminada por efeito teto.
 - Ficou confuso: nada pendente; a limitação "mesma família de modelo" está declarada no relatório.
 
 ## Próximos passos
 
-1. Revisar o relatório em grupo e preencher os nomes.
-2. Regerar o PDF depois da revisão (o comando está no `CLAUDE.md`).
-3. Opcional, se houver tempo: replicar com outro modelo (ChatGPT ou Gemini, colando `experimento/prompt.txt` + a especificação manualmente) para enfraquecer a ameaça "mesma família de modelo".
+1. Revisão do relatório (`entregaveis/4-relatorio-tecnico.pdf`) por pelo menos um membro do grupo; se algo mudar no `.md`, regerar o PDF (comando no `CLAUDE.md`).
+2. Confirmar o formato de entrega pedido pelo professor (arquivos, PDF ou link do repositório).
+3. Entregar até 2026-10-20, 23:59.
 
 ## Bloqueios
 
