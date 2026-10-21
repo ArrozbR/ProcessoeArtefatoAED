@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logística de Entregas — demonstração</title>
+<style>
+  :root {
+    --fundo: #f4f6f8; --cartao: #ffffff; --texto: #1d2733; --suave: #5f6b7a; --borda: #dde3ea;
+    --primaria: #2563eb; --primaria-clara: #e8efff; --ok: #15803d; --ok-claro: #e7f6ec;
+    --alerta: #b45309; --alerta-claro: #fdf3e2; --erro: #b91c1c; --erro-claro: #fdeaea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--fundo); color: var(--texto); font-size: 14px; }
+  header { background: var(--cartao); border-bottom: 1px solid var(--borda); padding: 12px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  .servicos { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pilula { padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--borda); background: var(--fundo); }
+  .pilula.ok { background: var(--ok-claro); border-color: #b6e2c3; color: var(--ok); }
+  .pilula.off { background: var(--erro-claro); border-color: #f2b8b8; color: var(--erro); }
+  .relogio { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .relogio strong { font-variant-numeric: tabular-nums; }
+  main { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 16px; padding: 16px 24px; }
+  @media (max-width: 1200px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  section h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .passo { background: var(--primaria); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-grid; place-items: center; font-size: 12px; }
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+  .grade4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 3px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; font: inherit; background: #fff; }
+  button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--borda); background: #fff; cursor: pointer; }
+  button.primario { background: var(--primaria); color: #fff; border-color: var(--primaria); }
+  button.sugerido { border-color: var(--primaria); color: var(--primaria); background: var(--primaria-clara); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .opcoes { display: grid; gap: 10px; margin-top: 12px; }
+  .opcao { border: 1px solid var(--borda); border-radius: 8px; padding: 12px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+  .opcao.escolhida { border-color: var(--primaria); box-shadow: 0 0 0 2px var(--primaria-clara); }
+  .opcao .nome { font-weight: 600; }
+  .opcao .preco { font-size: 18px; font-weight: 700; text-align: right; }
+  .opcao .meta { color: var(--suave); font-size: 12px; }
+  .selo { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--ok-claro); color: var(--ok); margin-left: 6px; }
+  .info { color: var(--suave); font-size: 12px; margin-top: 8px; }
+  .erro { background: var(--erro-claro); color: var(--erro); border-radius: 6px; padding: 8px 10px; margin-top: 10px; font-size: 13px; }
+  .vazio { color: var(--suave); font-style: italic; }
+  .envio-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .codigo { font-family: Consolas, monospace; font-size: 16px; font-weight: 600; }
+  .status { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--primaria-clara); color: var(--primaria); }
+  .status.ENTREGUE { background: var(--ok-claro); color: var(--ok); }
+  .status.FALHA_ENTREGA, .status.DEVOLVIDO, .status.CANCELADO { background: var(--erro-claro); color: var(--erro); }
+  .linha { list-style: none; padding: 0; margin: 0; position: relative; }
+  .linha li { padding: 0 0 14px 22px; position: relative; }
+  .linha li::before { content: ""; position: absolute; left: 5px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--primaria); }
+  .linha li::after { content: ""; position: absolute; left: 9px; top: 16px; bottom: 0; width: 1px; background: var(--borda); }
+  .linha li:last-child::after { display: none; }
+  .linha .quando { color: var(--suave); font-size: 12px; }
+  .notificacao { border-left: 3px solid var(--primaria); background: var(--fundo); padding: 8px 10px; border-radius: 0 6px 6px 0; margin-bottom: 8px; }
+  .notificacao .quando { color: var(--suave); font-size: 11px; }
+  .eventos { font-family: Consolas, monospace; font-size: 11.5px; max-height: 260px; overflow: auto; }
+  .evento { border-bottom: 1px dashed var(--borda); padding: 6px 0; }
+  .evento .tipo { color: var(--primaria); font-weight: 600; }
+  .alerta { background: var(--alerta-claro); color: var(--alerta); border-radius: 6px; padding: 6px 10px; font-size: 12px; margin: 8px 0; }
+  .metricas { display: flex; gap: 16px; margin: 8px 0 12px; color: var(--suave); font-size: 12px; flex-wrap: wrap; }
+  .metricas b { color: var(--texto); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚚 Logística de Entregas — microsserviços</h1>
+  <div class="servicos" id="servicos"></div>
+  <div class="relogio">
+    <span>Relógio simulado:</span><strong id="relogio"></strong>
+    <button onclick="avancar(24)">+1 dia</button>
+    <button onclick="reiniciar()">Reiniciar demo</button>
+  </div>
+</header>
+
+<main>
+  <div>
+    <section>
+      <h2><span class="passo">1</span> Cotação de frete <small class="info">(serviço Cotação → Transportadoras)</small></h2>
+      <div class="grade">
+        <div><label>Origem (CEP)</label><select id="origem"></select></div>
+        <div><label>Destino (CEP)</label><select id="destino"></select></div>
+      </div>
+      <div class="grade4" style="margin-top:8px">
+        <div><label>Peso (g)</label><input id="peso" type="number" value="1500"></div>
+        <div><label>Comp. (cm)</label><input id="comp" type="number" value="40"></div>
+        <div><label>Larg. (cm)</label><input id="larg" type="number" value="30"></div>
+        <div><label>Alt. (cm)</label><input id="alt" type="number" value="20"></div>
+      </div>
+      <div class="acoes"><button class="primario" onclick="cotar()">Cotar frete</button></div>
+      <div id="resumoCotacao"></div>
+      <div class="opcoes" id="opcoes"></div>
+      <div id="erroCotacao"></div>
+    </section>
+
+    <section>
+      <h2><span class="passo">2</span> Cliente escolhe a transportadora <small class="info">(serviço Envios)</small></h2>
+      <div class="grade">
+        <div><label>Nome do destinatário</label><input id="nome" value="Ana Souza"></div>
+        <div><label>E-mail</label><input id="email" value="ana@exemplo.com"></div>
+      </div>
+      <p class="info" id="escolha">Escolha uma opção na cotação acima.</p>
+      <div class="acoes"><button class="primario" id="botaoEnvio" onclick="criarEnvio()" disabled>Finalizar compra e criar envio</button></div>
+      <div id="erroEnvio"></div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2><span class="passo">3</span> Envio e painel da transportadora</h2>
+      <div id="envio"><p class="vazio">Nenhum envio ainda.</p></div>
+      <div id="painel" style="display:none">
+        <div class="grade" style="margin-top:12px">
+          <div><label>Local informado pela transportadora</label><input id="local"></div>
+          <div><label>Avanço do relógio por etapa</label>
+            <select id="passoHoras"><option value="3">3 horas</option><option value="8" selected>8 horas</option><option value="24">1 dia</option></select></div>
+        </div>
+        <div class="acoes" id="botoesStatus"></div>
+        <p class="info">Os botões destacados são as transições válidas. Os outros também podem ser clicados, para mostrar o sistema recusando uma transição inválida (409).</p>
+      </div>
+      <div id="erroAtualizacao"></div>
+    </section>
+
+    <section>
+      <h2>Eventos no barramento <small class="info">(Envios → Rastreamento e Notificações)</small></h2>
+      <div class="eventos" id="eventos"><p class="vazio">Nenhum evento publicado.</p></div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2><span class="passo">4</span> Rastreamento <small class="info">(serviço Rastreamento)</small></h2>
+      <div id="rastreio"><p class="vazio">Crie um envio para rastrear.</p></div>
+    </section>
+    <section>
+      <h2>Notificações do cliente <small class="info">(serviço Notificações)</small></h2>
+      <div id="notificacoes"><p class="vazio">Nenhuma notificação.</p></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const CEPS = [
+  ["01310100", "São Paulo/SP — Av. Paulista"], ["04538133", "São Paulo/SP — Itaim Bibi"],
+  ["20040002", "Rio de Janeiro/RJ — Centro"], ["30130010", "Belo Horizonte/MG — Centro"],
+  ["80010000", "Curitiba/PR — Centro"], ["90010000", "Porto Alegre/RS — Centro"],
+  ["40020000", "Salvador/BA — Centro"], ["69000000", "Manaus/AM (fora da área)"],
+];
+const CIDADE_UF = { SP: "São Paulo/SP", RJ: "Rio de Janeiro/RJ", MG: "Belo Horizonte/MG", PR: "Curitiba/PR",
+                    SC: "Florianópolis/SC", RS: "Porto Alegre/RS", ES: "Vitória/ES", BA: "Salvador/BA" };
+const TRANSICOES = { CRIADO: ["COLETADO", "CANCELAR"], COLETADO: ["EM_TRANSITO"], EM_TRANSITO: ["EM_TRANSITO", "SAIU_PARA_ENTREGA"],
+                     SAIU_PARA_ENTREGA: ["ENTREGUE", "FALHA_ENTREGA"], FALHA_ENTREGA: ["SAIU_PARA_ENTREGA"] };
+const ROTULOS = { COLETADO: "Coletar", EM_TRANSITO: "Em trânsito", SAIU_PARA_ENTREGA: "Saiu para entrega",
+                  ENTREGUE: "Entregar", FALHA_ENTREGA: "Falha na entrega", CANCELAR: "Cancelar envio" };
+
+let relogio = new Date(2026, 2, 2, 9, 0, 0);
+let cotacao = null, escolhida = null, envio = null, numeroPedido = 1;
+
+const $ = id => document.getElementById(id);
+const reais = c => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const doisDig = n => String(n).padStart(2, "0");
+const isoData = d => `${d.getFullYear()}-${doisDig(d.getMonth() + 1)}-${doisDig(d.getDate())}`;
+const isoDataHora = d => `${isoData(d)}T${doisDig(d.getHours())}:${doisDig(d.getMinutes())}:00`;
+const dataBR = s => s.split("-").reverse().join("/");
+const dataHoraBR = s => `${dataBR(s.slice(0, 10))} ${s.slice(11, 16)}`;
+const diaSemana = s => new Date(s + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short" });
+
+function mostrarRelogio() {
+  $("relogio").textContent = relogio.toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function avancar(horas) { relogio = new Date(relogio.getTime() + horas * 3600 * 1000); mostrarRelogio(); }
+
+async function api(metodo, caminho, corpo) {
+  const r = await fetch("/api/" + caminho, { method: metodo, headers: { "content-type": "application/json" },
+                                            body: corpo ? JSON.stringify(corpo) : undefined });
+  const dados = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, dados };
+}
+function erro(destino, r) {
+  $(destino).innerHTML = r ? `<div class="erro"><b>HTTP ${r.status} — ${r.dados.erro || "erro"}</b>${r.dados.mensagem ? ": " + r.dados.mensagem : ""}</div>` : "";
+}
+
+async function cotar() {
+  erro("erroCotacao");
+  const corpo = { cep_origem: $("origem").value, cep_destino: $("destino").value, data: isoData(relogio),
+                  pacote: { peso_g: +$("peso").value, comprimento_cm: +$("comp").value, largura_cm: +$("larg").value, altura_cm: +$("alt").value } };
+  const r = await api("POST", "cotacao/cotacoes", corpo);
+  if (!r.ok) { erro("erroCotacao", r); $("opcoes").innerHTML = ""; $("resumoCotacao").innerHTML = ""; return; }
+  cotacao = r.dados; escolhida = null; atualizarEscolha();
+  const c = cotacao;
+  $("resumoCotacao").innerHTML = `<div class="metricas"><span>Cotação <b>${c.id}</b></span><span>${c.uf_origem} → ${c.uf_destino}${c.uf_origem !== c.uf_destino ? " (interestadual)" : ""}</span>
+    <span>Peso taxado <b>${(c.peso_taxado_g / 1000).toLocaleString("pt-BR")} kg</b></span><span>Válida até <b>${dataBR(c.valida_ate)}</b></span></div>`;
+  if (!c.opcoes.length) { $("opcoes").innerHTML = `<p class="vazio">Nenhuma transportadora atende esse trajeto.</p>`; return; }
+  const maisRapida = Math.min(...c.opcoes.map(o => o.prazo_dias_uteis));
+  $("opcoes").innerHTML = c.opcoes.map((o, i) => `
+    <div class="opcao" id="opcao-${o.transportadora_id}">
+      <div><span class="nome">${o.nome}</span>${i === 0 ? '<span class="selo">mais barata</span>' : ""}${o.prazo_dias_uteis === maisRapida ? '<span class="selo">mais rápida</span>' : ""}
+        <div class="meta">${o.prazo_dias_uteis} dias úteis · chega ${diaSemana(o.data_prevista_entrega)} ${dataBR(o.data_prevista_entrega)}</div></div>
+      <div class="preco">${reais(o.preco_centavos)}</div>
+      <div></div><div><button onclick="escolher('${o.transportadora_id}')">Escolher</button></div>
+    </div>`).join("");
+}
+
+function escolher(id) {
+  escolhida = cotacao.opcoes.find(o => o.transportadora_id === id);
+  document.querySelectorAll(".opcao").forEach(e => e.classList.remove("escolhida"));
+  $("opcao-" + id).classList.add("escolhida");
+  atualizarEscolha();
+}
+function atualizarEscolha() {
+  $("escolha").innerHTML = escolhida
+    ? `Transportadora escolhida: <b>${escolhida.nome}</b> — ${reais(escolhida.preco_centavos)}, entrega prevista ${dataBR(escolhida.data_prevista_entrega)}.`
+    : "Escolha uma opção na cotação acima.";
+  $("botaoEnvio").disabled = !escolhida;
+}
+
+async function criarEnvio() {
+  erro("erroEnvio");
+  const corpo = { pedido_id: `PED-${numeroPedido}`, cotacao_id: cotacao.id, transportadora_id: escolhida.transportadora_id,
+                  destinatario: { nome: $("nome").value, email: $("email").value }, data_hora: isoDataHora(relogio) };
+  const r = await api("POST", "envios/envios", corpo);
+  if (!r.ok) { erro("erroEnvio", r); return; }
+  numeroPedido++;
+  envio = r.dados;
+  $("local").value = CIDADE_UF[cotacao.uf_origem] || "";
+  mostrarEnvio();
+  atualizarPaineis();
+}
+
+function mostrarEnvio() {
+  if (!envio) return;
+  $("envio").innerHTML = `
+    <div class="envio-cabecalho"><span class="codigo">${envio.codigo_rastreio}</span><span class="status ${envio.status}">${envio.status.replaceAll("_", " ")}</span></div>
+    <div class="metricas"><span>${envio.id} · ${envio.pedido_id}</span><span>${envio.transportadora_id}</span><span>${reais(envio.preco_centavos)}</span>
+      <span>Previsto <b>${dataBR(envio.data_prevista_entrega)}</b></span><span>Falhas: <b>${envio.tentativas_falhas}</b></span></div>`;
+  const validas = TRANSICOES[envio.status] || [];
+  $("painel").style.display = "block";
+  $("botoesStatus").innerHTML = ["COLETADO", "EM_TRANSITO", "SAIU_PARA_ENTREGA", "ENTREGUE", "FALHA_ENTREGA", "CANCELAR"]
+    .map(s => `<button class="${validas.includes(s) ? "sugerido" : ""}" onclick="atualizar('${s}')">${ROTULOS[s]}</button>`).join("");
+}
+
+async function atualizar(status) {
+  erro("erroAtualizacao");
+  avancar(+$("passoHoras").value);
+  const r = status === "CANCELAR"
+    ? await api("POST", `envios/envios/${envio.id}/cancelar`, { data_hora: isoDataHora(relogio) })
+    : await api("POST", `envios/envios/${envio.id}/atualizacoes`, { status, data_hora: isoDataHora(relogio), local: $("local").value });
+  if (!r.ok) { erro("erroAtualizacao", r); return; }
+  envio = r.dados;
+  if (status === "EM_TRANSITO" || status === "COLETADO") {
+    $("local").value = CIDADE_UF[cotacao.uf_destino] || $("local").value;
+  }
+  mostrarEnvio();
+  atualizarPaineis();
+}
+
+async function atualizarPaineis() {
+  const ev = await api("GET", "barramento/eventos");
+  if (ev.ok && ev.dados.length) {
+    $("eventos").innerHTML = ev.dados.slice().reverse().slice(0, 15).map(e => `
+      <div class="evento"><span class="tipo">${e.tipo}</span> · ${dataHoraBR(e.ocorrido_em)}<br>
+        ${Object.entries(e.dados).filter(([k]) => ["codigo_rastreio", "status", "local", "transportadora_id"].includes(k)).map(([k, v]) => `${k}=${v ?? "null"}`).join(" ")}</div>`).join("");
+  }
+  if (!envio) return;
+  const r = await api("GET", `rastreamento/rastreamento/${envio.codigo_rastreio}?data=${isoData(relogio)}`);
+  if (r.ok) {
+    const t = r.dados;
+    $("rastreio").innerHTML = `
+      <div class="envio-cabecalho"><span class="codigo">${t.codigo_rastreio}</span><span class="status ${t.status}">${t.status.replaceAll("_", " ")}</span></div>
+      ${t.atrasado ? `<div class="alerta">⚠ Atrasado: a entrega estava prevista para ${dataBR(t.data_prevista_entrega)}.</div>` : ""}
+      ${t.entregue ? `<div class="alerta" style="background:var(--ok-claro);color:var(--ok)">✔ Entregue</div>` : ""}
+      <ul class="linha" style="margin-top:12px">${t.historico.slice().reverse().map(h => `
+        <li><b>${h.status.replaceAll("_", " ")}</b>${h.local ? " — " + h.local : ""}<div class="quando">${dataHoraBR(h.data_hora)}</div></li>`).join("")}</ul>`;
+  }
+  const n = await api("GET", `notificacoes/notificacoes?email=${encodeURIComponent(envio.destinatario.email)}`);
+  if (n.ok) {
+    $("notificacoes").innerHTML = n.dados.length ? n.dados.slice().reverse().map(x => `
+      <div class="notificacao">📩 ${x.mensagem}<div class="quando">${x.email} · ${dataHoraBR(x.criada_em)}</div></div>`).join("")
+      : `<p class="vazio">Nenhuma notificação.</p>`;
+  }
+}
+
+async function verificarServicos() {
+  const r = await api("GET", "status");
+  if (r.ok) {
+    $("servicos").innerHTML = Object.entries(r.dados).map(([nome, ok]) => `<span class="pilula ${ok ? "ok" : "off"}">${ok ? "●" : "○"} ${nome}</span>`).join("");
+  }
+}
+
+async function reiniciar() {
+  await api("POST", "demo/reset");
+  relogio = new Date(2026, 2, 2, 9, 0, 0); numeroPedido = 1;
+  cotacao = escolhida = envio = null;
+  ["opcoes", "resumoCotacao", "erroCotacao", "erroEnvio", "erroAtualizacao"].forEach(id => $(id).innerHTML = "");
+  $("envio").innerHTML = `<p class="vazio">Nenhum envio ainda.</p>`; $("painel").style.display = "none";
+  $("rastreio").innerHTML = `<p class="vazio">Crie um envio para rastrear.</p>`;
+  $("notificacoes").innerHTML = `<p class="vazio">Nenhuma notificação.</p>`;
+  $("eventos").innerHTML = `<p class="vazio">Nenhum evento publicado.</p>`;
+  atualizarEscolha(); mostrarRelogio();
+}
+
+$("origem").innerHTML = CEPS.map(([c, n]) => `<option value="${c}">${c} — ${n}</option>`).join("");
+$("destino").innerHTML = CEPS.map(([c, n]) => `<option value="${c}" ${c === "20040002" ? "selected" : ""}>${c} — ${n}</option>`).join("");
+mostrarRelogio(); verificarServicos();
+setInterval(verificarServicos, 5000);
+setInterval(atualizarPaineis, 1500);
+</script>
+</body>
+</html>

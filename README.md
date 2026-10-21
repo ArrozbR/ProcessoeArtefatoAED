@@ -37,6 +37,18 @@ py -m venv .venv
 
 O código gerado pela LLM é executado localmente pelos testes. Rode numa máquina que você controla.
 
+## Demonstração
+
+Sobe os 5 microsserviços, o barramento e um gateway com uma página web para mostrar o fluxo completo: cotação, escolha da transportadora, atualizações da transportadora, rastreamento, notificações e eventos.
+
+```bash
+cd experimento
+.venv/Scripts/python demo/subir.py                       # roda o código gerado pela LLM (resultados/erl/01)
+.venv/Scripts/python demo/subir.py --alvo referencia     # ou a implementação de referência
+```
+
+Abra http://127.0.0.1:8000. O Swagger de cada serviço fica em `http://127.0.0.1:8101/docs` a `8105/docs` (endereços impressos no terminal). Ctrl+C encerra tudo.
+
 ## Estudo preliminar
 
 O primeiro ciclo do processo usou um sistema pequeno (biblioteca, módulo único) e está arquivado em [`estudo-preliminar/`](estudo-preliminar/), com o relatório próprio. O resultado (100% em todas as execuções, nas duas condições) motivou a troca por um sistema maior e distribuído.
