@@ -1,108 +1,104 @@
-# Relatório Técnico — Conformidade entre documento de requisitos ERL e código gerado por LLM
+# Relatório Técnico — Conformidade entre documento de requisitos ERL e microsserviços gerados por LLM
 
 **Disciplina:** AED — Processo e Artefato  
 **Grupo:** Pedro Blamires Cordeiro, Adriano Faleiro Gregório, Gabriel Borges, Heitor Felipe Trindade Deodato, Jefferson Felex de Faria, Vinícius Rodrigues Gonçalves Ferreira, Gabriel Rodrigues do Vale  
-**Data:** 2026-10-15
+**Data:** 2026-10-21
 
 ---
 
 ## Resumo
 
-Propomos o processo ERL (Especificação de Requisitos para LLM) e um modelo de documento de requisitos em Markdown com contrato de interface, regras atômicas, ordem de validação de erros e critérios de aceitação concretos. Testamos a hipótese de que código gerado por uma LLM a partir de um documento nesse modelo atinge conformidade de pelo menos 85% com os requisitos. A conformidade foi medida como a fração dos 64 critérios de aceitação aprovados por um oráculo de testes automáticos, validado contra uma implementação de referência e contra 8 mutantes. Em 30 gerações independentes com Claude Opus 5.5, **todas** atingiram 100% de conformidade (64/64). H0 foi rejeitada (Wilcoxon, p = 2,2 × 10⁻⁸; teste do sinal, p = 9,3 × 10⁻¹⁰). A comparação com uma especificação narrativa de mesmo conteúdo também deu 100% em 30 de 30 execuções, de modo que, **neste caso de uso**, não foi possível separar o efeito da estrutura do modelo do efeito do conteúdo: houve efeito teto.
+Propomos o processo ERL (Especificação de Requisitos para LLM) e um modelo de documento de requisitos em Markdown para sistemas de **microsserviços**, com arquitetura, contrato de rotas e eventos, convenções transversais, regras atômicas, ordem de validação e critérios de aceitação concretos. O objeto do experimento é um módulo de **logística de entregas** de um marketplace, com cinco microsserviços (Transportadoras, Cotação, Envios, Rastreamento e Notificações), comunicação por HTTP e por eventos, e escolha da transportadora pelo cliente. A conformidade foi medida como a fração dos 77 critérios de aceitação aprovados por um oráculo que sobe os serviços como processos separados e os testa pela rede. Em 30 gerações independentes com Claude Opus 5.5 a partir do documento ERL, **todas atingiram 100% de conformidade** (77/77), e a hipótese nula de conformidade ≤ 85% foi rejeitada (Wilcoxon, p = 2,2 × 10⁻⁸). Uma especificação narrativa com o mesmo conteúdo também atingiu 100% em 30 de 30 execuções, repetindo o efeito teto de um estudo preliminar com um sistema menor.
 
 ---
 
 ## 1. Introdução e problema
 
-LLMs geram código a partir de texto em linguagem natural, mas não pedem esclarecimentos: diante de uma ambiguidade, escolhem uma interpretação. A qualidade do código gerado depende, então, de quanto a especificação fecha as decisões de antemão. O problema investigado é: **um documento de requisitos estruturado consegue levar uma LLM a produzir software com conformidade de pelo menos 85% em relação aos requisitos?**
+LLMs geram código a partir de texto, mas não pedem esclarecimentos: diante de uma ambiguidade, escolhem uma interpretação. Em microsserviços o risco é maior, porque cada serviço pode estar "certo" isoladamente e o sistema estar errado: basta que dois serviços entendam o mesmo contrato de formas diferentes. O problema investigado é: **um documento de requisitos estruturado consegue levar uma LLM a produzir um sistema de microsserviços com conformidade de pelo menos 85% em relação aos requisitos?**
+
+O trabalho seguiu um ciclo iterativo em dois estudos:
+
+| | Estudo preliminar | Estudo principal |
+|---|---|---|
+| Sistema | Biblioteca (um módulo Python) | Logística de entregas (5 microsserviços FastAPI) |
+| Critérios de aceitação | 64 | 77 |
+| Interface testada | Chamadas de função | HTTP entre processos e eventos |
+| Resultado | 100% nas duas condições | 100% nas duas condições |
+| Material | [`estudo-preliminar/`](../estudo-preliminar/) | [`experimento/`](../experimento/) |
+
+O estudo preliminar bateu no teto da métrica, o que indicava que o sistema era fácil demais para diferenciar formatos de especificação. Junto com a mudança de escopo da atividade para microsserviços de logística, isso motivou o estudo principal, descrito a seguir.
 
 ## 2. Hipóteses
 
-Seja *C* a conformidade de uma execução: a razão entre critérios de aceitação aprovados e o total de critérios do documento (64).
+Seja *C* a conformidade de uma execução: a razão entre critérios de aceitação aprovados e o total de critérios (77).
 
-**H1 (principal).** Código gerado a partir de um documento no modelo ERL tem conformidade acima de 85%.
-
+**H1 (principal).** Microsserviços gerados a partir de um documento no modelo ERL têm conformidade acima de 85%.
 - H0₁: a mediana de *C* na condição ERL é ≤ 0,85.
 - H1₁: a mediana de *C* na condição ERL é > 0,85.
 
 **H2 (secundária).** A estrutura do modelo ERL aumenta a conformidade em relação a uma especificação narrativa com o mesmo conteúdo.
-
-- H0₂: a conformidade da condição ERL não é estocasticamente maior que a da condição narrativa.
+- H0₂: a conformidade da condição ERL não é estocasticamente maior que a da narrativa.
 - H1₂: a conformidade da condição ERL é estocasticamente maior.
-
-O enunciado da atividade exige H1. Incluímos H2 porque H1 sozinha não separa o mérito do modelo do mérito da LLM.
 
 ## 3. Método
 
 ### 3.1 Desenho
 
-Experimento com um fator (formato da especificação) em dois níveis e execuções independentes.
+Experimento com um fator (formato da especificação), dois níveis e 30 execuções independentes por nível.
 
 | Variável | Tipo | Definição |
 |---|---|---|
-| Formato da especificação | Independente | **ERL**: `experimento/especificacoes/biblioteca-modelo-erl.md`. **Narrativa**: `experimento/especificacoes/biblioteca-narrativa.md` |
-| Conformidade *C* | Dependente | CAs aprovados ÷ 64 |
-| Modelo, prompt, oráculo | Controladas | Iguais nas duas condições (Seção 3.4) |
+| Formato da especificação | Independente | **ERL**: [`ERS-LOG-001.md`](../experimento/especificacoes/ERS-LOG-001.md) (≈ 51 KB). **Narrativa**: [`logistica-narrativa.md`](../experimento/especificacoes/logistica-narrativa.md) (≈ 12,5 KB) |
+| Conformidade *C* | Dependente | CAs aprovados ÷ 77 |
+| Modelo, prompt, oráculo, barramento | Controladas | Iguais nas duas condições |
 
 ### 3.2 Objeto do experimento
 
-Um sistema de empréstimos de biblioteca (módulo Python `biblioteca.py`) com 11 requisitos funcionais, 11 regras de negócio, 5 requisitos não funcionais e 64 critérios de aceitação. O domínio foi escolhido por ter regras com interação não trivial (bloqueio por multa ou atraso, fila de reservas, renovações limitadas, teto de multa), fronteiras numéricas e prioridade entre erros. O escopo cabe numa resposta de LLM e é testável sem infraestrutura (ADR 0002).
+O módulo de logística é descrito em detalhe em [`5-modulo-logistica.md`](5-modulo-logistica.md). Em resumo:
 
-**Condição narrativa (controle).** Contém as mesmas regras, as mesmas assinaturas, a mesma ordem de validação e os mesmos valores do documento ERL, escritos em prosa corrida. Não tem IDs, tabelas, glossário, escopo negativo, cenário integrado nem critérios de aceitação. Tudo o que os testes cobram está escrito nela: a diferença entre as condições isola o efeito da **estrutura e dos exemplos**, não o da quantidade de informação.
+- **Transportadoras:** cadastro, com UFs atendidas, tarifas, prazo e peso máximo.
+- **Cotação:** peso cubado, peso taxado, preço com adicional interestadual arredondado para cima, prazo em dias úteis, ordenação das opções e validade de 7 dias. Consulta Transportadoras por HTTP.
+- **Envios:** criação com a **transportadora escolhida pelo cliente**, máquina de estados, devolução automática na 3ª falha e cancelamento. Consulta Cotação por HTTP e publica eventos.
+- **Rastreamento** e **Notificações:** consomem eventos, com idempotência.
+- **Barramento:** infraestrutura **fornecida pronta**, que não é gerada pela LLM.
 
-### 3.3 Instrumento de medição (oráculo)
+No total são 16 requisitos funcionais, 15 regras de negócio, 5 requisitos não funcionais e 77 critérios de aceitação, distribuídos por serviço conforme a Seção 5.3.
 
-`experimento/testes/test_aceitacao.py` contém exatamente um teste por critério de aceitação, nomeado pelo id do CA. O script confere a correspondência um a um antes de cada medição. O módulo gerado é importado como objeto (`m.Nome`), de modo que a falta de um nome reprova só os testes que o usam. Cada teste tem limite de 20 segundos.
+**Condição narrativa (controle).** Contém todas as regras, rotas, campos, códigos de erro, ordens de validação, mensagens e valores do documento ERL, em prosa corrida, sem IDs, tabelas, glossário, cenário base, cenário integrado nem critérios de aceitação. A diferença entre as condições isola, portanto, a **estrutura e os exemplos**, e não a quantidade de informação.
 
-**Validação do oráculo** (`python executar.py validar`), executada antes da coleta:
+### 3.3 Instrumento de medição (oráculo distribuído)
+
+[`experimento/testes/`](../experimento/testes/) contém um teste por critério de aceitação, nomeado pelo id do CA. O harness ([`conftest.py`](../experimento/testes/conftest.py)):
+
+1. sobe o barramento e os cinco serviços com `uvicorn`, **em processos separados e portas livres**, passando as URLs por variável de ambiente;
+2. testa tudo por HTTP, e verifica os eventos pelo registro do barramento;
+3. reinicia o estado antes de cada teste pela rota `POST /admin/reset` e, se ela falhar, reinicia o processo do serviço. Assim, a falta de uma rota não derruba em cascata os demais critérios (ADR 0005).
+
+**Validação do oráculo** (`executar.py validar`):
 
 | Verificação | Esperado | Obtido |
 |---|---|---|
-| Implementação de referência | 64/64 | 64/64 |
-| Arquivo vazio | 0/64 | 0/64 |
-| Mutante: prazo do aluno 15 dias | < 64 | 50/64 |
-| Mutante: sem teto de multa | < 64 | 63/64 |
-| Mutante: limite verificado antes do bloqueio | < 64 | 63/64 |
-| Mutante: atraso inclui a data prevista | < 64 | 62/64 |
-| Mutante: renovação a partir da data da chamada | < 64 | 61/64 |
-| Mutante: fila de reservas ignorada | < 64 | 62/64 |
-| Mutante: consulta devolve o estado interno | < 64 | 63/64 |
-| Mutante: ISBN aceita 12 dígitos | < 64 | 63/64 |
+| Implementação de referência | 77/77 | 77/77 |
+| Sistema vazio (5 arquivos sem código) | 0/77 | [PENDENTE] |
+| 14 mutantes da referência (fórmulas, arredondamento, calendário, ordem de validação, idempotência, formato de erro, regras de estado e de notificação) | todos detectados | [PENDENTE] |
 
-O oráculo aprova a implementação correta, não dá crédito a uma implementação vazia e detecta os 8 defeitos injetados. Isso importa para ler os resultados: os 100% observados **não** vêm de testes frouxos, porque um único desvio de regra derruba de 1 a 14 CAs.
+**Estabilidade do oráculo.** No piloto, duas execuções apareceram com 88,3% e 90,9%. A análise de causa (fase F8) mostrou que os testes abriam uma conexão TCP nova a cada requisição e, com outra validação rodando em paralelo, esgotaram as portas efêmeras do Windows (erro `WinError 10048`). Depois da correção, com conexões reaproveitadas e avaliações em sequência, as mesmas 5 execuções deram 100%. Essa falha virou uma regra do processo: o oráculo também precisa ser estável, e as avaliações rodam uma de cada vez.
 
 ### 3.4 Procedimento
 
-O plano inicial era chamar a API da Anthropic por script (`executar.py gerar`). Sem orçamento para créditos de API, a geração foi feita com **agentes do Claude Code** (modelo Claude Opus 5.5), cada um iniciado sem histórico, com esta instrução fixa:
+1. **Piloto:** 5 gerações ERL. Nenhum defeito de especificação foi encontrado, e o documento e o oráculo foram congelados.
+2. **Coleta:** 60 gerações (30 ERL e 30 narrativas), em ordem sorteada com semente fixa (2026) e intercaladas entre as condições, por **agentes do Claude Code** (Claude Opus 5.5), um por execução e sem histórico. Cada agente recebeu a instrução de ler **somente** o arquivo da sua especificação, cumprir o prompt fixo ([`prompt.txt`](../experimento/prompt.txt)) e gravar os cinco arquivos, sem executar nada.
+3. **Interrupções:** o limite de uso da assinatura interrompeu 11 agentes no meio da geração. Cada um foi **retomado do ponto onde parou**, no mesmo contexto, e não reiniciado; cada execução continua sendo uma única geração. 7 execuções que ainda não tinham começado foram disparadas depois.
+4. **Avaliação:** `executar.py registrar`, uma execução por vez, sem edição manual do código.
 
-1. ler **somente** o arquivo da especificação da sua condição, sem abrir nenhum outro arquivo nem executar código;
-2. cumprir o prompt do experimento (`experimento/prompt.txt`): *"Implemente o software descrito no documento de requisitos a seguir. Responda apenas com um único bloco de código Python contendo o arquivo biblioteca.py completo."*;
-3. gravar o arquivo em `resultados/<condição>/<execução>/biblioteca.py`, numa única gravação, sem testar.
+**Regra de inclusão:** toda execução entra na análise, e nenhuma foi descartada.
 
-Depois, `executar.py registrar` rodou o oráculo sobre cada arquivo, sem nenhuma edição manual, e gravou `resultados/execucoes.csv`. A ordem de disparo das 60 execuções seguiu um sorteio com semente fixa (2026), intercalando as condições, em lotes de 12 agentes simultâneos. Houve dois desvios na ordem, por erro na montagem dos lotes: as execuções erl 24 e narrativa 07 foram disparadas um lote depois do previsto. Isso não afeta a comparação, porque todas as execuções usaram a mesma configuração e foram geradas no mesmo intervalo de cerca de 5 minutos (14:45 a 14:50).
-
-**Regra de inclusão, definida antes da coleta:** toda execução entra na análise. Uma execução sem arquivo, ou com arquivo que não importa, conta pelos CAs que passarem, inclusive zero. Nenhuma execução foi descartada nem repetida.
-
-### 3.5 Tamanho da amostra e análise estatística
-
-São n = 30 execuções por condição. A conformidade é limitada a [0, 1] e se concentra perto de 1, o que dá uma distribuição assimétrica. Por isso os testes principais são não paramétricos:
+### 3.5 Análise estatística
 
 | Hipótese | Teste principal | Complementares | α |
 |---|---|---|---|
-| H1 | Wilcoxon de postos sinalizados para uma amostra, contra 0,85, unilateral | t de Student para uma amostra; teste do sinal (binomial); IC 95% da média por bootstrap | 0,05 |
+| H1 | Wilcoxon de postos sinalizados, uma amostra, contra 0,85, unilateral | Teste do sinal; t de Student (indefinido com variância zero); IC 95% por bootstrap | 0,05 |
 | H2 | Mann-Whitney U, unilateral | Correlação rank-biserial | 0,05 |
-
-O teste do sinal foi acrescentado depois do piloto e **antes** da coleta principal: com o piloto inteiro em 100%, o teste t ficaria indefinido (variância zero) e era preciso um teste complementar robusto a empates.
-
-### 3.6 Piloto
-
-Cinco execuções na condição ERL, antes da coleta principal, para achar defeitos de especificação (fase F8 do processo).
-
-| Execução | Conformidade | CAs reprovados | Causa (F8) | Ação |
-|---|---|---|---|---|
-| 1 a 5 | 64/64 (100%) em todas | nenhum | — | nenhuma; documento e oráculo congelados |
-
-O piloto não revelou nenhum defeito de especificação. As execuções do piloto ficam em `resultados/piloto/` e **não** entram na amostra principal.
 
 ---
 
@@ -111,67 +107,70 @@ O piloto não revelou nenhum defeito de especificação. As execuções do pilot
 | Item | Valor |
 |---|---|
 | Modelo | Claude Opus 5.5, via agentes do Claude Code |
-| Parâmetros de amostragem | Padrão do Claude Code; não controláveis por nós |
-| Python | 3.14 (execução dos testes) |
-| Bibliotecas | pytest 9.1, pytest-timeout 2.4, scipy 1.18 (`experimento/requirements.txt`) |
-| Data da coleta | 2026-10-15 |
-| Consumo | ~62 mil tokens por execução ERL e ~47 mil por execução narrativa (cerca de 3,6 milhões no total, contando o piloto), dentro da assinatura; custo direto zero |
+| Parâmetros de amostragem | Padrão do Claude Code, não controláveis |
+| Execução dos testes | Python 3.14, FastAPI, uvicorn, httpx, pytest; Windows 11 |
+| Data | 2026-10-21 |
+| Consumo | ≈ 85 mil tokens por geração ERL e ≈ 65 mil por narrativa (≈ 4,9 milhões no total, com o piloto), dentro da assinatura; custo direto zero |
 
 ---
 
 ## 5. Resultados
 
-Dados brutos em `experimento/resultados/execucoes.csv`; código gerado em `experimento/resultados/<condição>/<execução>/`; tabelas geradas por `analisar.py` em `experimento/resultados/resumo.md`.
+Dados brutos: [`experimento/resultados/execucoes.csv`](../experimento/resultados/execucoes.csv); código gerado em `experimento/resultados/<condição>/<execução>/servicos/`; tabelas em [`resumo.md`](../experimento/resultados/resumo.md).
 
 ### 5.1 Estatística descritiva
 
-| Condição | n | Média | DP | Mediana | Mín | Máx | IC 95% da média | Execuções ≥ 85% |
-|---|---|---|---|---|---|---|---|---|
-| ERL | 30 | 100,0% | 0,0% | 100,0% | 100,0% | 100,0% | [100,0%; 100,0%] | 30/30 |
-| Narrativa | 30 | 100,0% | 0,0% | 100,0% | 100,0% | 100,0% | [100,0%; 100,0%] | 30/30 |
+| Condição | n | Média | DP | Mediana | Mín | Máx | IC 95% | Execuções ≥ 85% | Linhas de código (média, mín–máx) |
+|---|---|---|---|---|---|---|---|---|---|
+| ERL | 30 | 100,0% | 0,0% | 100,0% | 100,0% | 100,0% | [100,0%; 100,0%] | 30/30 | 790 (684–896) |
+| Narrativa | 30 | 100,0% | 0,0% | 100,0% | 100,0% | 100,0% | [100,0%; 100,0%] | 30/30 | 763 (695–872) |
 
-Nenhuma execução reprovou em nenhum critério de aceitação. Todos os 60 arquivos foram gerados e importaram sem erro.
+Todas as 60 execuções subiram os cinco serviços e passaram nos 77 critérios.
 
 ### 5.2 Teste de H1
 
 | Teste | Estatística | p-valor | Decisão |
 |---|---|---|---|
 | Wilcoxon de postos sinalizados (principal) | W = 465,0 | 2,16 × 10⁻⁸ | rejeita H0₁ |
-| t de Student para uma amostra | indefinido (variância zero) | — | — |
-| Teste do sinal (binomial) | 30 de 30 acima de 0,85 | 9,31 × 10⁻¹⁰ | rejeita H0₁ |
+| Teste do sinal | 30 de 30 acima de 0,85 | 9,31 × 10⁻¹⁰ | rejeita H0₁ |
+| t de Student | indefinido (variância zero) | — | — |
 
-**H1 é aceita:** a conformidade do código gerado a partir do documento ERL é maior que 85%, com p < 0,001. Na prática, nenhuma das 30 execuções ficou abaixo da meta; o pior caso também foi 100%.
+**H1 é aceita.** A conformidade dos microsserviços gerados a partir do documento ERL é maior que 85%, com p < 0,001, e o pior caso também foi 100%.
 
-### 5.3 Teste de H2
+### 5.3 Conformidade por serviço
+
+| Serviço | CAs | ERL | Narrativa |
+|---|---|---|---|
+| Transportadoras | 13 | 100% | 100% |
+| Cotação | 14 | 100% | 100% |
+| Envios | 29 | 100% | 100% |
+| Rastreamento | 8 | 100% | 100% |
+| Notificações | 7 | 100% | 100% |
+| Transversais (reset, RNF, cenário integrado) | 6 | 100% | 100% |
+
+### 5.4 Teste de H2
 
 | Teste | Estatística | p-valor | Tamanho de efeito | Decisão |
 |---|---|---|---|---|
 | Mann-Whitney U | indefinido (todas as execuções com o mesmo valor) | — | r = 0 | não rejeita H0₂ |
 
-**H2 não pôde ser sustentada:** as duas condições atingiram o teto da métrica.
-
-### 5.4 Critérios de aceitação mais reprovados
-
-Nenhum. Não houve reprovação em nenhuma das 60 execuções nem nas 5 do piloto.
+**H2 não pôde ser sustentada:** as duas condições atingiram o teto, como no estudo preliminar.
 
 ### 5.5 Verificação de contaminação
 
-Como os agentes rodaram na mesma máquina que a implementação de referência, conferimos se algum código a copiou. A semelhança textual com a referência (`difflib.SequenceMatcher`, por linhas) foi, em média, de 0,35 na condição ERL e de 0,36 na narrativa, com máximo de 0,55. Os códigos têm estruturas diferentes entre si (dicionários, *dataclasses*, classes internas) e de 257 a 332 linhas. A condição narrativa, cujos agentes não tinham nenhum motivo para procurar a referência, tem a mesma semelhança que a ERL. Isso indica que a semelhança vem do estilo comum do modelo e do vocabulário do documento (`_bloqueado`, `saldo_devedor`), não de cópia.
+Os agentes rodaram na máquina onde estão a referência e os testes. A semelhança textual entre o código gerado (os 5 arquivos concatenados) e a referência foi de 0,14 em média na condição ERL (máximo 0,18) e de 0,18 na narrativa (máximo 0,23), bem abaixo do estudo preliminar (0,35). Os sistemas gerados têm entre 684 e 896 linhas, contra 507 da referência (linhas não vazias). Não há sinal de cópia.
 
 ---
 
 ## 6. Discussão
 
-**H1.** O resultado atende, com folga, ao critério da atividade: 30 de 30 gerações com 100% de conformidade. O oráculo validado por mutação garante que esse 100% não é um artefato de testes fracos.
+**H1.** O modelo ERL atingiu a meta com folga, agora num sistema distribuído: cinco processos que só se conhecem pela rede, com HTTP síncrono, eventos, idempotência, máquina de estados e regras numéricas com arredondamento e calendário. Nas 30 execuções, nenhum contrato entre serviços falhou: nenhum campo de evento com nome trocado, nenhuma rota divergente, nenhum erro de validação no formato padrão do framework.
 
-**H2 e o efeito teto.** A especificação narrativa também deu 100%. Há duas leituras possíveis, e os dados não permitem escolher entre elas:
+**H2 e o teto, pela segunda vez.** Mesmo com um sistema cerca de 2,5 vezes maior em código e distribuído, a especificação narrativa também chegou a 100%. Os dois estudos apontam para a mesma conclusão: **para um modelo forte, o que garante a conformidade é o conteúdo da especificação, e não a sua forma**. A narrativa foi escrita depois do documento ERL e, por isso, já continha cada decisão que o processo força a tomar: a ordem dos erros, as fronteiras ("a cotação vale até `valida_ate`, inclusive"), os campos exatos de cada evento, a conversão do erro do FastAPI, as mensagens literais das notificações e o fato de a data da cotação não contar como dia útil.
 
-1. **Para um sistema deste tamanho, o conteúdo importa mais que a forma.** A narrativa foi escrita *depois* do documento ERL, pelo mesmo grupo, e por isso já tinha todas as decisões que o processo ERL força a tomar: a ordem dos erros, as fronteiras ("na própria data prevista ainda não há atraso"), as chaves exatas do dicionário de retorno, a regra de que ids falhos não são consumidos. Com esse conteúdo, um modelo forte acerta em qualquer formato.
-2. **O caso de uso é fácil demais para discriminar.** Com 11 operações e cerca de 300 linhas de código, o sistema cabe com folga na capacidade do modelo. A diferença entre os formatos pode aparecer em sistemas maiores, com mais interação entre regras ou com modelos menores.
+Daí vem a principal lição do trabalho: **o valor do modelo ERL está em obrigar o analista a tomar e escrever essas decisões**. As seções de convenções gerais, catálogo de eventos, ordem de validação, cenário base e critérios de aceitação existem para que nenhuma delas fique implícita. O experimento mostra que, quando elas estão escritas, a LLM acerta em qualquer formato. O que ele **não** mede, porque o controle foi deliberadamente completo (ADR 0003), é quanto dessas decisões um analista escreveria sem o processo.
 
-A primeira leitura tem uma consequência importante para o trabalho: **o valor do modelo ERL está no processo de escrevê-lo**. As decisões que garantiram 100% nas duas condições foram tomadas porque o modelo exige uma tabela de ordem de validação, um glossário com fronteiras, uma interface com chaves exatas e um checklist de revisão. Um enunciado narrativo típico, escrito sem esse processo, não teria essas decisões. Este experimento, porém, **não mede isso**, porque o controle foi deliberadamente completo (ADR 0003). Medir esse efeito exige outro desenho (Seção 8).
-
-**Granularidade da métrica.** Com 64 CAs, cada CA vale 1,56 ponto percentual, e um único defeito de regra custa de 1 a 14 CAs (Seção 3.3). A meta de 85% tolera até 9 CAs reprovados (64 × 0,15 = 9,6). Um único defeito numa regra de grande alcance, como o prazo do aluno (14 CAs, conformidade de 78%), já derruba a execução abaixo da meta, enquanto defeitos de alcance pequeno custam de 1 a 3 CAs. A margem observada (zero defeitos) é, portanto, grande.
+**Por que o teto pode ser real, e não falta de sensibilidade.** O oráculo detecta defeitos pequenos: uma ordem de validação invertida ou um arredondamento para baixo já reprovam critérios (Seção 3.3). A falta de variação, portanto, não vem de testes frouxos, e sim de o modelo não errar quando a especificação é completa.
 
 ---
 
@@ -179,54 +178,60 @@ A primeira leitura tem uma consequência importante para o trabalho: **o valor d
 
 | Tipo | Ameaça | Mitigação ou consequência |
 |---|---|---|
-| Interna | **Mesma família de modelo.** O documento, a referência e os testes foram escritos com apoio do Claude, e o código foi gerado pelo Claude. O documento pode estar escrito num estilo que esse modelo entende especialmente bem. | Declarada. Replicar com outro modelo (GPT, Gemini, Llama) é a extensão mais importante (Seção 8). |
-| Interna | **Isolamento dos agentes não é verificável.** Os agentes rodaram na máquina onde estão a referência e os testes. A instrução proibia abrir outros arquivos, mas os logs dos agentes não ficaram disponíveis para auditoria. | Verificação indireta por semelhança textual (Seção 5.5): sem sinal de cópia, e semelhança igual na condição que não tinha motivo para procurar a referência. |
-| Interna | **Parâmetros não controlados.** Pelo Claude Code não é possível fixar esforço de raciocínio, temperatura ou versão exata do modelo. | Todos os agentes usaram a mesma configuração padrão, ao mesmo tempo, o que mantém a comparação entre condições justa. O script de API (`executar.py gerar`) permite repetir o experimento com parâmetros fixos. |
-| Interna | Execuções em lotes paralelos, não estritamente na ordem sorteada. | As condições foram intercaladas em cada lote; não houve diferença entre condições a ser confundida com o tempo. |
-| Constructo | A conformidade mede só o que os 64 CAs cobrem. Legibilidade e manutenibilidade não são medidas. | Os CAs cobrem todo RF, toda linha de ordem de validação e toda fronteira numérica. A métrica mede **aderência ao documento**, que é o que a atividade pede. |
-| Constructo | O controle narrativo contém todas as decisões do ERL, algo raro num enunciado real. | Escolha deliberada (ADR 0003): torna H2 um teste conservador. Explica o resultado nulo de H2. |
-| Externa | Um único sistema, pequeno, numa única linguagem. | Não generalizar para sistemas grandes, com persistência, interface ou integração. |
-| Conclusão | Variância zero: o intervalo de confiança degenera e o teste t fica indefinido. | Testes não paramétricos (Wilcoxon e sinal) continuam válidos. A conclusão é sobre **este** modelo e **este** sistema. |
+| Interna | **Mesma família de modelo:** documento, referência e testes foram escritos com apoio do Claude, e o código foi gerado pelo Claude. | Declarada. Uma tentativa de replicar com o Gemini pela API gratuita falhou, porque os modelos disponíveis não tinham cota sem cartão. Replicar com outro fornecedor é a extensão mais importante. |
+| Interna | **Isolamento dos agentes não auditável:** os agentes rodaram na máquina com a referência e os testes. | Semelhança com a referência baixa (0,14 a 0,18) e igual entre as condições (Seção 5.5). |
+| Interna | **Interrupções por limite de uso:** 11 gerações pararam no meio. | Retomadas no mesmo contexto, sem reiniciar; todas as 60 completaram os 5 arquivos. |
+| Interna | Parâmetros de amostragem não controlados. | Mesma configuração em todas as execuções. O script `executar.py gerar` permite repetir com parâmetros fixos via API. |
+| Interna | Instabilidade do ambiente de teste (portas no Windows). | Detectada no piloto, corrigida antes da coleta e avaliações feitas em sequência (Seção 3.3). |
+| Constructo | Os 77 CAs não medem legibilidade, desempenho real nem tolerância a falhas. | A métrica mede aderência ao documento, que é o que a atividade pede. |
+| Constructo | O controle narrativo tem todas as decisões do ERL, o que é raro num enunciado real. | Escolha deliberada, que torna H2 conservador e explica o resultado nulo. |
+| Externa | Barramento síncrono e confiável; estado em memória; um domínio; uma linguagem. | Não generalizar para mensageria real, persistência ou outras stacks (limitações em `5-modulo-logistica.md`, Seção 7). |
+| Conclusão | Variância zero. | Testes não paramétricos (Wilcoxon e sinal) continuam válidos. A conclusão vale para este modelo e este sistema. |
 
 ---
 
 ## 8. Melhorias propostas
 
-**No processo e no artefato** (identificadas durante a construção):
+**No processo e no artefato** (incorporadas na versão 2):
 
-1. **Oráculo como fase obrigatória.** Sem um teste por CA, validado com mutantes, não há como saber se uma reprovação é da LLM ou do teste. Por isso a fase F5 virou obrigatória.
-2. **Situação inicial explícita em cada CA.** Na revisão (F4) do primeiro rascunho, dois CAs estavam ambíguos: o CA-RF05-06 herdava uma "situação inicial" que contradizia o próprio enunciado, e o CA-RNF03-01 falava do "livro `i`" sem dizer qual era o ISBN. Os dois foram reescritos, e a regra "diga o estado inicial completo ou remeta a uma situação comum" entrou nas instruções (Seção 4).
-3. **Permissões explícitas.** A RN-08 ("pode ter dois exemplares do mesmo livro") surgiu da leitura adversarial: sem ela, as duas interpretações eram razoáveis.
+1. **Seções próprias de microsserviços:** arquitetura com arquivo e variável de ambiente por serviço, mapa de comunicação, catálogo de eventos com campos exatos e convenções transversais escritas uma única vez.
+2. **Testabilidade como atividade de análise (F2):** URLs por ambiente, datas na requisição, rota de reset e identificadores determinísticos. Sem isso não existe oráculo.
+3. **Oráculo distribuído e estável (F5):** serviços em processos separados, testados pela rede, com conexões reaproveitadas, e avaliações em sequência.
+4. **Cenário base nomeado (S0, Q-A, E-1):** deixa os 77 CAs curtos e sem ambiguidade.
 
-**No experimento** (a partir dos resultados):
+**No experimento:**
 
-4. **Controle realista para H2.** Pedir a pessoas de fora do grupo que escrevam a especificação do mesmo sistema "do jeito que fariam", a partir da mesma entrevista com o cliente, e comparar com quem segue o processo ERL. Isso mede o efeito do **processo** (forçar decisões), que é onde a discussão aponta o valor do modelo.
-5. **Casos de uso mais difíceis.** Um sistema maior (20 ou mais RFs), com persistência ou API HTTP, para sair do teto.
-6. **Outros modelos.** Repetir com modelos de outros fornecedores e com modelos menores, nos quais a diferença entre formatos tende a aparecer antes.
-7. **Medir o esforço.** Registrar as horas gastas para preencher o modelo, para comparar custo e ganho de conformidade.
+5. **Controle realista para H2:** pessoas de fora do grupo especificando o mesmo sistema sem o processo, a partir da mesma entrevista, para medir o efeito do **processo** e não só da forma.
+6. **Outros modelos e fornecedores,** inclusive menores, nos quais a diferença entre formatos tende a aparecer.
+7. **Infraestrutura real** (Kafka ou RabbitMQ, banco por serviço) e requisitos de falha (reentrega, ordem, *outbox*), para sair do teto.
+8. **Medir o esforço** de preenchimento do modelo, para comparar custo e ganho.
 
 ---
 
 ## 9. Conclusão
 
-O processo ERL e o modelo de documento atingiram o objetivo da atividade: em 30 gerações independentes, o código produzido pelo Claude Opus 5.5 a partir do documento teve 100% de conformidade com os 64 critérios de aceitação, acima da meta de 85% (Wilcoxon, p = 2,2 × 10⁻⁸). O oráculo foi validado por mutação, então esse resultado não decorre de testes fracos.
+O processo ERL e o modelo de documento para microsserviços atingiram o objetivo da atividade: em 30 gerações independentes, os cinco microsserviços de logística produzidos pelo Claude Opus 5.5 a partir do documento passaram nos 77 critérios de aceitação, com 100% de conformidade, acima da meta de 85% (Wilcoxon, p = 2,2 × 10⁻⁸). O resultado repete o do estudo preliminar num sistema maior e distribuído.
 
-A comparação com uma especificação narrativa de mesmo conteúdo também deu 100%, e por isso o experimento não mostra que a **forma** do documento, sozinha, aumente a conformidade neste caso. A principal lição é que, para uma LLM forte, a conformidade depende de as decisões estarem **tomadas e escritas**: ordem de erros, fronteiras, nomes e formatos exatos. O modelo ERL é a ferramenta que obriga o analista a tomá-las. Medir esse efeito do processo, e não só da forma, é o próximo passo.
+Nos dois estudos, uma especificação narrativa com o mesmo conteúdo também chegou a 100%. A lição para o processo é que, para uma LLM forte, a conformidade depende de as decisões estarem **tomadas e escritas**: contratos, ordem de erros, fronteiras e formatos. O modelo ERL é a ferramenta que obriga o analista a tomá-las e a não esquecer nenhuma. Medir esse efeito do processo, comparando com especificações escritas sem ele, é o próximo passo.
 
 ---
 
 ## Referências
 
 - ISO/IEC/IEEE 29148:2018. *Systems and software engineering — Life cycle processes — Requirements engineering.*
-- SOMMERVILLE, I. *Engenharia de Software*. 10. ed. São Paulo: Pearson, 2018. Capítulo 4 (Engenharia de requisitos).
+- SOMMERVILLE, I. *Engenharia de Software*. 10. ed. São Paulo: Pearson, 2018.
+- NEWMAN, S. *Building Microservices*. 2. ed. Sebastopol: O'Reilly, 2021.
+- RICHARDSON, C. *Microservices Patterns*. Shelter Island: Manning, 2018.
 - WOHLIN, C. et al. *Experimentation in Software Engineering*. Berlin: Springer, 2012.
-- NORTH, D. *Introducing BDD*, 2006 (formato Dado/Quando/Então).
+- JIA, Y.; HARMAN, M. An Analysis and Survey of the Development of Mutation Testing. *IEEE Transactions on Software Engineering*, v. 37, n. 5, 2011.
+- NORTH, D. *Introducing BDD*, 2006.
 
 ## Apêndices
 
-- A. Modelo do documento: `entregaveis/2-modelo-documento-requisitos.md`
-- B. Documento preenchido (ERL): `experimento/especificacoes/biblioteca-modelo-erl.md`
-- C. Especificação narrativa (controle): `experimento/especificacoes/biblioteca-narrativa.md`
-- D. Prompt: `experimento/prompt.txt`
-- E. Oráculo: `experimento/testes/test_aceitacao.py`
-- F. Dados brutos: `experimento/resultados/execucoes.csv`, `experimento/resultados/resumo.md` e o código gerado em `experimento/resultados/<condição>/<execução>/`
+- A. Modelo do documento: [`2-modelo-documento-requisitos.md`](2-modelo-documento-requisitos.md)
+- B. Documento preenchido: [`experimento/especificacoes/ERS-LOG-001.md`](../experimento/especificacoes/ERS-LOG-001.md)
+- C. Especificação narrativa: [`experimento/especificacoes/logistica-narrativa.md`](../experimento/especificacoes/logistica-narrativa.md)
+- D. Explicação do módulo: [`5-modulo-logistica.md`](5-modulo-logistica.md)
+- E. Oráculo e harness: [`experimento/testes/`](../experimento/testes/); barramento: [`experimento/infra/barramento.py`](../experimento/infra/barramento.py)
+- F. Dados brutos e código gerado: [`experimento/resultados/`](../experimento/resultados/)
+- G. Estudo preliminar (biblioteca): [`estudo-preliminar/relatorio-estudo-preliminar.md`](../estudo-preliminar/relatorio-estudo-preliminar.md)
