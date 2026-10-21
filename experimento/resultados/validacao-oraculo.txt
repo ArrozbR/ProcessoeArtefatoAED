@@ -1,1 +1,17 @@
 Referência: 77/77
+Stub vazio: 0/77
+Mutante 'peso cubado com divisor 5': 73/77  reprovados: CA-C01-02 CA-C01-03 CA-RNF05-01 CA-INT-01
+Mutante 'preço interestadual arredondado para baixo': 76/77  reprovados: CA-C01-04
+Mutante 'prazo em dias corridos': 72/77  reprovados: CA-C01-01 CA-C01-02 CA-C01-07 CA-RNF05-01 CA-INT-01
+Mutante 'ordenação sem desempate por id': 77/77  reprovados:
+Mutante 'cotação válida por 6 dias': 75/77  reprovados: CA-C01-01 CA-E01-04
+Mutante 'listagem ignora somente_ativas': 76/77  reprovados: CA-T02-02
+Mutante 'erro de validação no formato padrão do FastAPI': 72/77  reprovados: CA-T01-02 CA-T01-03 CA-T01-04 CA-T01-05 CA-T04-03
+Mutante 'devolução só na 4ª falha': 74/77  reprovados: CA-E04-07 CA-E04-12 CA-N01-03
+Mutante 'cotação consultada antes do pedido duplicado': 76/77  reprovados: CA-E01-07
+Mutante 'data e hora anteriores aceitas': 76/77  reprovados: CA-E04-05
+Mutante 'cancelamento depois da coleta': 76/77  reprovados: CA-E05-02
+Mutante 'rastreamento sem idempotência': 76/77  reprovados: CA-R01-01
+Mutante 'atrasado ignora estado terminal': 76/77  reprovados: CA-R02-04
+Mutante 'notificação também para COLETADO': 73/77  reprovados: CA-N01-02 CA-N01-03 CA-RNF05-01 CA-INT-01
+Oráculo fraco: mutantes não detectados: ['ordenação sem desempate por id']

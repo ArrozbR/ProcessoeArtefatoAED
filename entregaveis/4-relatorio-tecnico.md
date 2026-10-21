@@ -33,10 +33,12 @@ O estudo preliminar bateu no teto da métrica, o que indicava que o sistema era 
 Seja *C* a conformidade de uma execução: a razão entre critérios de aceitação aprovados e o total de critérios (77).
 
 **H1 (principal).** Microsserviços gerados a partir de um documento no modelo ERL têm conformidade acima de 85%.
+
 - H0₁: a mediana de *C* na condição ERL é ≤ 0,85.
 - H1₁: a mediana de *C* na condição ERL é > 0,85.
 
 **H2 (secundária).** A estrutura do modelo ERL aumenta a conformidade em relação a uma especificação narrativa com o mesmo conteúdo.
+
 - H0₂: a conformidade da condição ERL não é estocasticamente maior que a da narrativa.
 - H1₂: a conformidade da condição ERL é estocasticamente maior.
 
@@ -79,8 +81,23 @@ No total são 16 requisitos funcionais, 15 regras de negócio, 5 requisitos não
 | Verificação | Esperado | Obtido |
 |---|---|---|
 | Implementação de referência | 77/77 | 77/77 |
-| Sistema vazio (5 arquivos sem código) | 0/77 | [PENDENTE] |
-| 14 mutantes da referência (fórmulas, arredondamento, calendário, ordem de validação, idempotência, formato de erro, regras de estado e de notificação) | todos detectados | [PENDENTE] |
+| Sistema vazio (5 arquivos sem código) | 0/77 | 0/77 |
+| Mutante: peso cubado com divisor 5 | < 77 | 73/77 |
+| Mutante: preço interestadual arredondado para baixo | < 77 | 76/77 |
+| Mutante: prazo em dias corridos | < 77 | 72/77 |
+| Mutante: cotação válida por 6 dias | < 77 | 75/77 |
+| Mutante: listagem ignora `somente_ativas` | < 77 | 76/77 |
+| Mutante: erro de validação no formato padrão do FastAPI | < 77 | 72/77 |
+| Mutante: devolução só na 4ª falha | < 77 | 74/77 |
+| Mutante: cotação consultada antes do pedido duplicado | < 77 | 76/77 |
+| Mutante: data e hora anteriores aceitas | < 77 | 76/77 |
+| Mutante: cancelamento depois da coleta | < 77 | 76/77 |
+| Mutante: rastreamento sem idempotência | < 77 | 76/77 |
+| Mutante: atrasado ignora estado terminal | < 77 | 76/77 |
+| Mutante: notificação também para COLETADO | < 77 | 73/77 |
+| Mutante: ordenação das opções sem desempate por `id` | < 77 | **77/77 (não detectado)** |
+
+O oráculo aprova a referência, não dá crédito a um sistema vazio e detecta **13 dos 14 mutantes**. O mutante não detectado é **equivalente**: o serviço Cotação recebe as transportadoras do serviço Transportadoras já em ordem alfabética de `id` (RF-T02), e a ordenação do Python é estável, então retirar o desempate por `id` na Cotação não muda nenhuma resposta observável do sistema. Nenhum teste pela rede consegue distingui-lo da referência. A consequência prática é que o CA-C01-08 (desempate por `id`) verifica o comportamento do sistema como um todo, mas não garante que a Cotação implemente o desempate por conta própria. O escore de mutação entre os mutantes não equivalentes é de 13/13. Os testes não foram alterados depois da coleta.
 
 **Estabilidade do oráculo.** No piloto, duas execuções apareceram com 88,3% e 90,9%. A análise de causa (fase F8) mostrou que os testes abriam uma conexão TCP nova a cada requisição e, com outra validação rodando em paralelo, esgotaram as portas efêmeras do Windows (erro `WinError 10048`). Depois da correção, com conexões reaproveitadas e avaliações em sequência, as mesmas 5 execuções deram 100%. Essa falha virou uma regra do processo: o oráculo também precisa ser estável, e as avaliações rodam uma de cada vez.
 
@@ -182,6 +199,7 @@ Daí vem a principal lição do trabalho: **o valor do modelo ERL está em obrig
 | Interna | **Isolamento dos agentes não auditável:** os agentes rodaram na máquina com a referência e os testes. | Semelhança com a referência baixa (0,14 a 0,18) e igual entre as condições (Seção 5.5). |
 | Interna | **Interrupções por limite de uso:** 11 gerações pararam no meio. | Retomadas no mesmo contexto, sem reiniciar; todas as 60 completaram os 5 arquivos. |
 | Interna | Parâmetros de amostragem não controlados. | Mesma configuração em todas as execuções. O script `executar.py gerar` permite repetir com parâmetros fixos via API. |
+| Constructo | Um mutante equivalente (desempate por `id` na Cotação) não é detectável pela rede. | Declarado na Seção 3.3; o comportamento do sistema como um todo continua verificado pelo CA-C01-08. Um teste que injetasse transportadoras fora de ordem exigiria simular o serviço Transportadoras. |
 | Interna | Instabilidade do ambiente de teste (portas no Windows). | Detectada no piloto, corrigida antes da coleta e avaliações feitas em sequência (Seção 3.3). |
 | Constructo | Os 77 CAs não medem legibilidade, desempenho real nem tolerância a falhas. | A métrica mede aderência ao documento, que é o que a atividade pede. |
 | Constructo | O controle narrativo tem todas as decisões do ERL, o que é raro num enunciado real. | Escolha deliberada, que torna H2 conservador e explica o resultado nulo. |
@@ -198,13 +216,14 @@ Daí vem a principal lição do trabalho: **o valor do modelo ERL está em obrig
 2. **Testabilidade como atividade de análise (F2):** URLs por ambiente, datas na requisição, rota de reset e identificadores determinísticos. Sem isso não existe oráculo.
 3. **Oráculo distribuído e estável (F5):** serviços em processos separados, testados pela rede, com conexões reaproveitadas, e avaliações em sequência.
 4. **Cenário base nomeado (S0, Q-A, E-1):** deixa os 77 CAs curtos e sem ambiguidade.
+5. **Testes por serviço, além dos de sistema:** o mutante equivalente da Seção 3.3 mostra que uma regra pode ficar coberta pelo comportamento de outro serviço. Testar cada serviço também isolado, com um dublê no lugar das dependências (ex.: Transportadoras devolvendo em ordem inversa), pegaria esse caso.
 
 **No experimento:**
 
-5. **Controle realista para H2:** pessoas de fora do grupo especificando o mesmo sistema sem o processo, a partir da mesma entrevista, para medir o efeito do **processo** e não só da forma.
-6. **Outros modelos e fornecedores,** inclusive menores, nos quais a diferença entre formatos tende a aparecer.
-7. **Infraestrutura real** (Kafka ou RabbitMQ, banco por serviço) e requisitos de falha (reentrega, ordem, *outbox*), para sair do teto.
-8. **Medir o esforço** de preenchimento do modelo, para comparar custo e ganho.
+6. **Controle realista para H2:** pessoas de fora do grupo especificando o mesmo sistema sem o processo, a partir da mesma entrevista, para medir o efeito do **processo** e não só da forma.
+7. **Outros modelos e fornecedores,** inclusive menores, nos quais a diferença entre formatos tende a aparecer.
+8. **Infraestrutura real** (Kafka ou RabbitMQ, banco por serviço) e requisitos de falha (reentrega, ordem, *outbox*), para sair do teto.
+9. **Medir o esforço** de preenchimento do modelo, para comparar custo e ganho.
 
 ---
 
