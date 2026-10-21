@@ -1,7 +1,8 @@
-# Documento de Requisitos — {{NOME DO SISTEMA}}
+# Documento de Requisitos — {{NOME DO SISTEMA}} ({{CÓDIGO, ex.: ERS-XXX-001}})
 
-> Modelo **ERL** (Especificação de Requisitos para LLM), versão 1.0.
-> Siga `3-instrucoes-preenchimento.md` para preencher este documento. Todo texto entre `{{ }}` deve ser substituído, e toda linha que começa com `>` dentro das seções é orientação: apague-a antes de entregar o documento à LLM.
+> Modelo **ERL** (Especificação de Requisitos para LLM), versão 2.0, para sistemas de **microsserviços**.
+> Siga `3-instrucoes-preenchimento.md`. Todo texto entre `{{ }}` deve ser substituído, e toda linha que começa com `>` dentro das seções é orientação: apague-a antes de entregar o documento à LLM.
+> Exemplo completo preenchido: `experimento/especificacoes/ERS-LOG-001.md`.
 
 | Campo | Valor |
 |---|---|
@@ -17,11 +18,11 @@
 Este documento é a única fonte de verdade. Ao implementar:
 
 1. Implemente **todos** os requisitos `RF`, `RN` e `RNF` deste documento, e **somente** eles.
-2. Use exatamente os nomes, assinaturas, tipos e exceções da Seção 5. Não renomeie, não traduza, não acrescente parâmetros obrigatórios.
-3. Quando mais de um erro se aplicar à mesma chamada, siga a **ordem de validação** de cada requisito.
-4. Os **critérios de aceitação** (`CA`) são exemplos obrigatórios: o código deve produzir exatamente os resultados descritos.
-5. Não invente regras. Situações não descritas aqui estão na Seção 1.3 (fora de escopo) e não precisam ser tratadas.
-6. Entregue a saída no formato da Seção 12.
+2. Use exatamente os caminhos de arquivo, rotas HTTP, nomes de campos JSON, códigos de status e códigos de erro deste documento. Não renomeie, não traduza, não acrescente campos obrigatórios.
+3. Quando mais de um erro se aplicar à mesma requisição, siga a **ordem de validação** de cada requisito.
+4. Os **critérios de aceitação** (`CA`) são exemplos obrigatórios: o sistema deve produzir exatamente os resultados descritos.
+5. Não invente regras. O que não está descrito aqui está na Seção 1.3 (fora de escopo).
+6. Entregue a saída no formato da Seção 13.
 
 ---
 
@@ -29,33 +30,31 @@ Este documento é a única fonte de verdade. Ao implementar:
 
 ### 1.1 Objetivo
 
-> Uma a três frases: que problema o sistema resolve e para quem.
+> De uma a três frases: que problema o sistema resolve e para quem.
 
 {{objetivo}}
 
 ### 1.2 Escopo: o que está incluído
 
-> Lista curta das capacidades. Cada item vira um ou mais RF.
-
 - {{capacidade}}
 
 ### 1.3 Fora de escopo
 
-> O que o sistema **não** faz. Isso impede a LLM de inventar funcionalidades (persistência, interface gráfica, autenticação, etc.).
+> Liste o que uma LLM costuma acrescentar sozinha: banco de dados, autenticação, interface, filas reais, retentativas, leitura do relógio, edição/remoção de registros.
 
 - {{item fora de escopo}}
 
 ### 1.4 Atores
 
-| Ator | Descrição | O que faz no sistema |
+| Ator | Descrição | Serviços que usa |
 |---|---|---|
-| {{ator}} | {{descrição}} | {{RFs que usa}} |
+| {{ator}} | {{descrição}} | {{serviços}} |
 
 ---
 
 ## 2. Glossário
 
-> Um termo, uma definição. O mesmo termo deve ser usado no documento inteiro, sem sinônimos.
+> Um termo, uma definição, sem sinônimos. Termos calculados ganham fórmula.
 
 | Termo | Definição |
 |---|---|
@@ -63,121 +62,187 @@ Este documento é a única fonte de verdade. Ao implementar:
 
 ---
 
-## 3. Restrições técnicas
+## 3. Arquitetura
+
+### 3.1 Serviços
+
+> Uma linha por serviço. A coluna "Arquivo" fixa onde o código vai ficar; a coluna "Variável" fixa como os outros serviços o encontram.
+
+| Serviço | Responsabilidade | Arquivo | Variável com a URL base |
+|---|---|---|---|
+| {{Nome}} | {{responsabilidade}} | `{{servicos/<nome>/main.py}}` | `{{URL_NOME}}` |
+| {{Infraestrutura fornecida, ex.: barramento}} | {{responsabilidade}} | não deve ser implementado | `{{URL_...}}` |
+
+> Escreva a regra de isolamento: um serviço não lê nem altera dados de outro diretamente.
+
+### 3.2 Comunicação
+
+> Diagrama (Mermaid) e uma tabela com toda chamada entre serviços. Para cada uma: síncrona (HTTP) ou por evento, e quando acontece.
+
+| De | Para | Forma | Quando |
+|---|---|---|---|
+| {{serviço}} | {{serviço}} | {{HTTP `MÉTODO rota` / evento `tipo`}} | {{gatilho}} |
+
+---
+
+## 4. Restrições técnicas
 
 | ID | Restrição |
 |---|---|
-| RT-01 | Linguagem e versão: {{ex.: Python 3.12}} |
-| RT-02 | Dependências permitidas: {{ex.: apenas a biblioteca padrão}} |
-| RT-03 | Estrutura de arquivos: {{ex.: um único arquivo `modulo.py`}} |
-| RT-04 | Ponto de entrada: {{ex.: classe `X` importável de `modulo`}} |
-| RT-05 | Representação de valores especiais: {{ex.: dinheiro em centavos (`int`), datas como `datetime.date`}} |
+| RT-01 | Linguagem e versão: {{ex.: Python 3.10+}} |
+| RT-02 | Dependências permitidas: {{lista fechada}} |
+| RT-03 | Estrutura: {{um arquivo por serviço, o que cada arquivo expõe e como é executado}} |
+| RT-04 | Chamadas entre serviços: {{biblioteca, síncrona/assíncrona, tempo-limite}} |
+| RT-05 | Representação: {{dinheiro, peso, datas, data e hora}} |
+| RT-06 | Relógio e aleatoriedade: {{ex.: datas sempre na requisição}} |
+| RT-07 | Saída padrão: {{ex.: o código não imprime nada}} |
 
 ---
 
-## 4. Modelo de dados
+## 5. Convenções gerais da API
 
-> Uma tabela por entidade. Todo campo com tipo, obrigatoriedade e restrição verificável.
+> Tudo o que vale para todas as rotas de todos os serviços. É aqui que se evita repetir a mesma regra em cada RF.
 
-### 4.1 {{Entidade}}
+### 5.1 Formato
 
-| Campo | Tipo | Obrigatório | Restrições | Valor inicial |
-|---|---|---|---|---|
-| {{campo}} | {{tipo}} | {{Sim/Não}} | {{regra verificável}} | {{valor ou —}} |
+{{JSON, nomes de campo, campos extras}}
 
----
+### 5.2 Erros
 
-## 5. Interface pública (contrato)
+```json
+{"erro": "CODIGO_DO_ERRO", "mensagem": "texto"}
+```
 
-> A parte mais importante para a conformidade: é por aqui que o software é testado. Escreva as assinaturas exatamente como devem aparecer no código.
-
-### 5.1 Exceções
-
-| Exceção | Herda de | Quando é lançada |
+| HTTP | `erro` | Quando |
 |---|---|---|
-| {{ErroBase}} | `Exception` | Base de todos os erros do sistema |
-| {{NomeDoErro}} | {{ErroBase}} | {{situação}} |
+| 422 | `DADOS_INVALIDOS` | {{validação; diga explicitamente se inclui a validação automática do framework}} |
+| 404 | {{código}} | {{recurso da rota não existe}} |
+| 409 | {{código}} | {{conflito com o estado}} |
+| 503 | {{código}} | {{serviço chamado indisponível}} |
 
-### 5.2 Operações
+### 5.3 Ordem geral de validação
 
-| Assinatura | Retorno | RF |
+{{ex.: validação do corpo antes de qualquer outra verificação}}
+
+### 5.4 Atomicidade
+
+{{ex.: requisição com erro não altera estado, não consome id, não publica evento}}
+
+### 5.5 Identificadores
+
+| Recurso | Formato | Regra |
 |---|---|---|
-| `{{nome(param: tipo, ...) -> tipo}}` | {{significado do retorno}} | {{RF-xx}} |
+| {{recurso}} | {{`PREFIXO-000001`}} | {{sequencial a partir de 1, por criação bem-sucedida}} |
+
+### 5.6 Reinício de estado
+
+{{rota de reset para os testes, ex.: `POST /admin/reset` → 204}}
 
 ---
 
-## 6. Regras de negócio
+## 6. Eventos
 
-> Cada regra é uma frase afirmativa, atômica, com valores concretos. Regras que permitem algo também são escritas, porque a ausência de regra é ambígua.
+### 6.1 Envelope
+
+```json
+{"id": "{{...}}", "tipo": "{{...}}", "ocorrido_em": "{{...}}", "dados": {}}
+```
+
+### 6.2 Barramento
+
+> Contrato do barramento (fornecido ou a implementar): como publicar, como os assinantes recebem, ordem e garantia de entrega.
+
+### 6.3 Catálogo de eventos
+
+| Tipo | Publicado por | Quando | `dados` |
+|---|---|---|---|
+| `{{dominio.fato}}` | {{serviço}} | {{gatilho}} | {{campos}} |
+
+### 6.4 Consumo de eventos
+
+> Envelope inválido, evento repetido (idempotência), tipo desconhecido e resposta de sucesso.
+
+---
+
+## 7. Regras de negócio
+
+> Cada regra é uma frase afirmativa, atômica, com valores e fórmulas. Escreva também as permissões. Tabelas de referência (ex.: faixas de CEP) entram aqui.
 
 | ID | Regra |
 |---|---|
-| RN-01 | {{regra com valores}} |
+| RN-01 | {{regra}} |
 
 ---
 
-## 7. Requisitos funcionais
+## 8. Serviços e requisitos funcionais
 
-> Copie o bloco abaixo para cada RF. Um RF descreve uma operação da Seção 5.2.
+### 8.0 Cenário base dos critérios de aceitação
 
-### RF-{{01}} — {{Nome da operação}}
+> Defina uma vez os dados de partida (cadastros e requisições de referência com nome, ex.: S0, Q-A, E-1) e reutilize-os nos CAs. Isso deixa cada CA curto e sem ambiguidade.
+
+### 8.{{n}} Serviço {{Nome}}
+
+**Modelo de dados — {{Entidade}}**
+
+| Campo | Tipo | Restrições | Valor inicial |
+|---|---|---|---|
+| `{{campo}}` | {{tipo}} | {{restrição verificável}} | {{valor ou —}} |
+
+**Rotas**
+
+| Método e rota | Sucesso | RF |
+|---|---|---|
+| `{{MÉTODO /rota}}` | {{status, corpo}} | {{RF-X01}} |
+
+#### RF-{{X01}} — {{Nome da operação}}
 
 - **Descrição:** O sistema deve {{ação}}.
-- **Prioridade:** {{Essencial / Importante / Desejável}}
-- **Operação:** `{{assinatura}}`
-- **Regras aplicadas:** {{RN-xx, RN-yy}}
-- **Pré-condições:** {{estado exigido antes da chamada}}
-- **Efeito (pós-condições):** {{o que muda no estado do sistema}}
-- **Retorno:** {{valor e significado}}
+- **Corpo / parâmetros:** {{campos e restrições, ou referência à tabela}}
+- **Dependência:** {{chamadas HTTP feitas a outros serviços}}
+- **Efeito:** {{o que muda no estado; eventos publicados}}
+- **Resposta:** {{status e corpo}}
 
-**Ordem de validação** (a primeira condição verdadeira define o erro; nada é alterado quando há erro):
+| # | Condição | HTTP | `erro` |
+|---|---|---|---|
+| 1 | {{condição}} | {{status}} | `{{CODIGO}}` |
 
-| # | Condição | Exceção |
-|---|---|---|
-| 1 | {{condição}} | `{{Exceção}}` |
-
-**Critérios de aceitação:**
-
-- **CA-RF{{01}}-01** — Dado {{estado inicial concreto}}, quando {{chamada concreta com valores}}, então {{resultado exato}}.
-- **CA-RF{{01}}-02** — Dado {{...}}, quando {{...}}, então é lançada `{{Exceção}}` e {{o que não mudou}}.
+- **CA-{{X01}}-01** — Dado {{estado inicial concreto}}, quando {{requisição concreta}}, então {{status e corpo exatos}}.
 
 ---
 
-## 8. Requisitos não funcionais
-
-> Só entra RNF com métrica e forma de verificação. "O sistema deve ser rápido" não é RNF.
+## 9. Requisitos não funcionais
 
 | ID | Requisito | Métrica / limite | Como verificar |
 |---|---|---|---|
 | RNF-01 | {{requisito}} | {{valor numérico ou condição}} | {{teste, inspeção}} |
 
-**Critérios de aceitação:**
-
 - **CA-RNF{{01}}-01** — {{critério verificável}}.
 
 ---
 
-## 9. Cenário integrado
+## 10. Cenário integrado
 
-> Um exemplo ponta a ponta que encadeia vários RF, com o estado esperado após cada passo. Serve para a LLM conferir a interação entre as regras.
+> Um fluxo de ponta a ponta que atravessa todos os serviços, com o resultado de cada passo.
 
-| Passo | Chamada | Resultado esperado |
-|---|---|---|
-| 1 | `{{chamada}}` | {{resultado}} |
-
----
-
-## 10. Matriz de rastreabilidade
-
-| Requisito | Regras | Operação | Critérios de aceitação |
+| Passo | Ator | Requisição | Resultado esperado |
 |---|---|---|---|
-| RF-{{01}} | {{RN-xx}} | `{{operação}}` | {{CA-RF01-01 a CA-RF01-0n}} |
+| 1 | {{ator}} | {{requisição}} | {{resultado}} |
+
+- **CA-INT-01** — O cenário integrado produz exatamente os resultados da tabela.
 
 ---
 
-## 11. Questões em aberto
+## 11. Matriz de rastreabilidade
 
-> Precisa estar **vazia** para a Situação ser "Pronto para geração". Resolva cada questão com o cliente e mova a decisão para a seção certa.
+| Requisito | Regras | Rota | Critérios de aceitação |
+|---|---|---|---|
+| RF-{{X01}} | {{RN-xx}} | `{{rota}}` | {{CA-X01-01 a 0n}} |
+
+---
+
+## 12. Questões em aberto
+
+> Precisa estar vazia para a Situação ser "Pronto para geração".
 
 | # | Questão | Responsável | Decisão |
 |---|---|---|---|
@@ -185,6 +250,6 @@ Este documento é a única fonte de verdade. Ao implementar:
 
 ---
 
-## 12. Formato de entrega
+## 13. Formato de entrega
 
-{{ex.: Responda com um único bloco de código contendo o arquivo `modulo.py` completo, sem explicações fora do bloco.}}
+{{ex.: um bloco de código por arquivo, com a primeira linha `# arquivo: <caminho>`; nada fora dos blocos}}

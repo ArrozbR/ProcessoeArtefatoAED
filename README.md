@@ -4,35 +4,42 @@
 
 | # | Entregável | Arquivo |
 |---|---|---|
-| 1 | Processo ERL (Especificação de Requisitos para LLM) | [`entregaveis/1-processo.md`](entregaveis/1-processo.md) |
+| 1 | Processo ERL (Especificação de Requisitos para LLM), para microsserviços | [`entregaveis/1-processo.md`](entregaveis/1-processo.md) |
 | 2 | Artefato: modelo do documento de requisitos | [`entregaveis/2-modelo-documento-requisitos.md`](entregaveis/2-modelo-documento-requisitos.md) |
 | 3 | Instruções de preenchimento e checklist | [`entregaveis/3-instrucoes-preenchimento.md`](entregaveis/3-instrucoes-preenchimento.md) |
 | 4 | Relatório técnico do experimento | [`entregaveis/4-relatorio-tecnico.md`](entregaveis/4-relatorio-tecnico.md) |
+| 5 | Módulo de logística de entregas: visão completa (arquitetura, regras, fluxos) | [`entregaveis/5-modulo-logistica.md`](entregaveis/5-modulo-logistica.md) |
 
-## Experimento
+## Experimento: módulo de logística em microsserviços
 
 | O quê | Onde |
 |---|---|
-| Documento preenchido no modelo (caso: biblioteca) | `experimento/especificacoes/biblioteca-modelo-erl.md` |
-| Especificação narrativa (grupo de controle) | `experimento/especificacoes/biblioteca-narrativa.md` |
-| Oráculo: um teste por critério de aceitação | `experimento/testes/test_aceitacao.py` |
-| Implementação de referência (valida o oráculo) | `experimento/referencia/biblioteca.py` |
-| Geração com LLM e medição | `experimento/executar.py` |
+| Documento de requisitos no modelo ERL (o que a LLM recebe) | `experimento/especificacoes/ERS-LOG-001.md` |
+| Especificação narrativa (grupo de controle) | `experimento/especificacoes/logistica-narrativa.md` |
+| Barramento de eventos (infraestrutura fornecida) | `experimento/infra/barramento.py` |
+| Implementação de referência dos 5 serviços (valida o oráculo) | `experimento/referencia/servicos/` |
+| Oráculo: um teste HTTP por critério de aceitação; harness que sobe os serviços como processos | `experimento/testes/` |
+| Geração, registro e medição | `experimento/executar.py` |
 | Estatística | `experimento/analisar.py` |
 | Dados brutos e código gerado | `experimento/resultados/` |
 
-Para reproduzir (Windows; requer `ANTHROPIC_API_KEY`):
+Para reproduzir (Windows):
 
 ```bash
 cd experimento
 py -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt
-.venv/Scripts/python executar.py validar          # referência 64/64, stub 0/64, 8 mutantes detectados
-.venv/Scripts/python executar.py gerar --n 30     # 30 execuções por condição; retoma se interrompido
+.venv/Scripts/python -m pytest testes -q          # sobe os 6 processos e roda os 77 critérios contra a referência
+.venv/Scripts/python executar.py validar          # oráculo: referência 100%, sistema vazio 0%, mutantes detectados
+.venv/Scripts/python executar.py registrar        # avalia o código gerado em resultados/<condicao>/<NN>/servicos/
 .venv/Scripts/python analisar.py                  # gera resultados/resumo.md
 ```
 
 O código gerado pela LLM é executado localmente pelos testes. Rode numa máquina que você controla.
+
+## Estudo preliminar
+
+O primeiro ciclo do processo usou um sistema pequeno (biblioteca, módulo único) e está arquivado em [`estudo-preliminar/`](estudo-preliminar/), com o relatório próprio. O resultado (100% em todas as execuções, nas duas condições) motivou a troca por um sistema maior e distribuído.
 
 Decisões de projeto: [`docs/decisoes/`](docs/decisoes/).
 

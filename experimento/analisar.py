@@ -15,6 +15,22 @@ LIMIAR = 0.85
 ALFA = 0.05
 
 
+GRUPOS_CA = [
+    ("Transportadoras", lambda i: i.startswith("CA-T")),
+    ("Cotação", lambda i: i.startswith("CA-C")),
+    ("Envios", lambda i: i.startswith("CA-E")),
+    ("Rastreamento", lambda i: i.startswith("CA-R0")),
+    ("Notificações", lambda i: i.startswith("CA-N")),
+    ("Transversais (reset, RNF, integrado)", lambda i: i.startswith(("CA-X", "CA-RNF", "CA-INT"))),
+]
+
+
+def _ids_criterios():
+    import re
+    texto = (RAIZ / "especificacoes" / "ERS-LOG-001.md").read_text(encoding="utf-8")
+    return re.findall(r"\*\*(CA-[A-Z0-9]+-\d{2})\*\*", texto)
+
+
 def carregar():
     with CSV.open(encoding="utf-8", newline="") as f:
         linhas = list(csv.DictReader(f))
@@ -55,7 +71,7 @@ def main():
     conf = {c: [float(l["conformidade"]) for l in ls] for c, ls in grupos.items()}
     out = ["# Resumo estatístico", ""]
     l0 = next(iter(grupos.values()))[0]
-    out += [f"Modelo: `{l0['modelo']}` · effort: `{l0['effort']}` · CAs por execução: {l0['total_ca']}", ""]
+    out += [f"Modelo: `{l0['modelo']}` · CAs por execução: {l0['total_ca']}", ""]
 
     out += ["## Estatística descritiva", "",
             "| Condição | n | Média | DP | Mediana | Mín | Máx | IC 95% da média (bootstrap) | Execuções ≥ 85% |",
@@ -99,6 +115,20 @@ def main():
             out += [f"| Mann-Whitney U | U = {u.statistic:.1f} | {u.pvalue:.2e} | correlação rank-biserial r = {rb:.2f} | "
                     f"{'rejeita H0' if u.pvalue < ALFA else 'não rejeita H0'} |", ""]
 
+    ids_todos = _ids_criterios()
+    out += ["## Conformidade por serviço", "",
+            "| Serviço | CAs | " + " | ".join(f"média em {c}" for c in grupos) + " |",
+            "|---|---|" + "---|" * len(grupos)]
+    for servico, prefixo in GRUPOS_CA:
+        ids = [i for i in ids_todos if prefixo(i)]
+        celulas = []
+        for c, ls in grupos.items():
+            taxas = [1 - len(set(l["ca_reprovados"].split()) & set(ids)) / len(ids) for l in ls]
+            celulas.append(pct(sum(taxas) / len(taxas)))
+        out.append(f"| {servico} | {len(ids)} | " + " | ".join(celulas) + " |")
+    out += ["", "Linhas de código geradas (média): " + ", ".join(
+        f"{c}: {sum(int(l['linhas_codigo']) for l in ls) / len(ls):.0f}" for c, ls in grupos.items()), ""]
+
     out += ["## Critérios de aceitação mais reprovados", "",
             "| CA | " + " | ".join(f"reprovações em {c}" for c in grupos) + " |",
             "|---|" + "---|" * len(grupos)]
@@ -106,7 +136,7 @@ def main():
     todos = Counter()
     for cnt in contagem.values():
         todos.update(cnt)
-    for ca, _ in todos.most_common(15):
+    for ca, _ in todos.most_common(20):
         out.append(f"| {ca} | " + " | ".join(f"{contagem[c][ca]}/{len(grupos[c])}" for c in grupos) + " |")
     if not todos:
         out.append("| — | " + " | ".join("0" for _ in grupos) + " |")

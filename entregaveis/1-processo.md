@@ -6,14 +6,16 @@ O processo ERL transforma uma necessidade de software num documento de requisito
 
 ### 1.1 Por que um processo específico para LLM
 
-Uma pessoa desenvolvedora que recebe um requisito ambíguo pergunta ao analista. Uma LLM não pergunta: ela **escolhe** uma interpretação e segue em frente. Por isso a especificação precisa fechar, antes da geração, as decisões que normalmente se resolvem em conversa. Quando o documento não fecha essas decisões, a não conformidade costuma vir de quatro fontes (os mutantes usados na fase F5 imitam exatamente essas falhas):
+Uma pessoa desenvolvedora que recebe um requisito ambíguo pergunta ao analista. Uma LLM não pergunta: ela **escolhe** uma interpretação e segue em frente. Por isso a especificação precisa fechar, antes da geração, as decisões que normalmente se resolvem em conversa. Quando o documento não fecha essas decisões, a não conformidade costuma vir das fontes abaixo (os mutantes usados na fase F5 imitam exatamente essas falhas):
 
 | Fonte de não conformidade | Exemplo | Como o processo a elimina |
 |---|---|---|
-| Interface divergente | A LLM chama o método de `realizar_emprestimo` em vez de `emprestar`, ou devolve `float` em vez de `int` | Contrato de interface exato (Seção 5 do modelo), definido na fase F2 |
-| Regra implícita | "O aluno tem prazo de duas semanas": 14 dias corridos ou úteis? Conta a partir de quando? | Regra atômica com valores (Seção 6) e glossário (Seção 2) |
-| Prioridade entre erros | O usuário está bloqueado **e** no limite: qual exceção vem primeiro? | Tabela de ordem de validação em cada RF |
-| Fronteira | Devolver **na** data prevista gera multa? | Critérios de aceitação com valores concretos, incluindo os limites |
+| Interface divergente | A LLM cria a rota `/shipments` em vez de `/envios`, ou devolve o preço em reais (`float`) em vez de centavos (`int`) | Contrato de interface exato (Seções 3 e 8 do modelo), definido na fase F2 |
+| Contrato entre serviços divergente | O serviço que publica o evento chama o campo de `email` e o que consome espera `destinatario_email`; cada serviço "funciona", mas o sistema não | Catálogo de eventos com os dados exatos (Seção 6) e cenário integrado (Seção 10) |
+| Regra implícita | "Prazo de 2 dias": corridos ou úteis? O dia da cotação conta? | Regra atômica com fórmula (Seção 7) e glossário (Seção 2) |
+| Prioridade entre erros | O pedido já tem envio **e** a cotação não existe: qual erro vem primeiro? | Tabela de ordem de validação em cada RF e ordem geral (Seção 5.3) |
+| Comportamento padrão do framework | O FastAPI devolve erros de validação no formato dele, e não no formato combinado | Convenções gerais explícitas (Seção 5.2) |
+| Fronteira | Uma cotação de 7 dias ainda vale às 23:59:59 do 7º dia? | Critérios de aceitação com valores concretos, incluindo os limites |
 
 O processo se apoia nas atividades clássicas da engenharia de requisitos (elicitação, análise, especificação e validação) e nas características de um bom requisito da ISO/IEC/IEEE 29148: necessário, não ambíguo, verificável, singular, consistente, completo e rastreável. Ele acrescenta três coisas: o contrato de interface, o **oráculo** de testes derivado dos critérios e um ciclo de retroalimentação que mede a conformidade e corrige o documento.
 
@@ -53,7 +55,7 @@ Cada fase tem entrada, atividades, saída e um critério de saída. Uma fase só
 - **Entrada:** a necessidade do cliente (conversa, enunciado, sistema legado).
 - **Atividades:**
   1. Entrevistar o cliente com o roteiro: objetivo, atores, o que o sistema faz, o que **não** faz, regras com números (prazos, limites, valores), erros possíveis e exemplos reais.
-  2. Para cada regra mencionada, pedir **um exemplo com números**: "se o aluno pega o livro no dia 2 e devolve no dia 19, quanto paga?". O exemplo pega ambiguidades que a frase esconde.
+  2. Para cada regra mencionada, pedir **um exemplo com números**: "um pacote de 1,5 kg e 40 × 30 × 20 cm, de São Paulo para o Rio, cotado numa segunda-feira: quanto custa e quando chega?". O exemplo pega ambiguidades que a frase esconde.
   3. Registrar tudo em notas brutas, sem filtrar.
 - **Saída:** notas de elicitação e lista inicial de exemplos.
 - **Critério de saída:** todo ator e toda capacidade citada pelo cliente tem pelo menos um exemplo numérico.
@@ -63,13 +65,17 @@ Cada fase tem entrada, atividades, saída e um critério de saída. Uma fase só
 - **Entrada:** notas da F1.
 - **Atividades:**
   1. **Glossário:** listar os substantivos do domínio e dar a cada um uma definição única. Eliminar sinônimos ("leitor", "usuário", "cliente" viram um só termo).
-  2. **Modelo de dados:** transformar os substantivos em entidades com campos, tipos e restrições verificáveis.
-  3. **Contrato de interface:** decidir como o software será usado e testado (classe e métodos, endpoints HTTP, linha de comando), com nomes, parâmetros, tipos de retorno e erros. É a decisão que mais pesa na conformidade, porque é por ela que o oráculo enxerga o software.
-  4. **Regras de negócio:** decompor as regras em frases atômicas (uma regra, um fato), com valores concretos. Escrever também as **permissões** ("é permitido ter dois exemplares do mesmo livro"), porque a ausência de regra é ambígua.
-  5. **Escopo negativo:** listar o que fica fora (persistência, interface, autenticação...) para a LLM não inventar.
-  6. **Questões em aberto:** toda dúvida vira uma linha na Seção 11 e volta ao cliente.
-- **Saída:** glossário, modelo de dados, contrato, regras e escopo.
-- **Critério de saída:** nenhuma questão em aberto sem resposta do cliente.
+  2. **Decomposição em serviços:** agrupar as capacidades por **contexto de negócio**: cada serviço tem um dono, dados próprios e um ritmo de mudança. Para cada serviço, registrar a responsabilidade numa frase e o que ele **não** faz. Regra de isolamento: um serviço só conhece outro pelo contrato (rotas e eventos), nunca pelos dados.
+  3. **Comunicação:** para cada interação entre serviços, decidir entre **HTTP síncrono** (o chamador precisa da resposta para continuar) e **evento** (um fato que já aconteceu e interessa a outros). Desenhar o mapa de chamadas e o catálogo de eventos, com os dados que cada evento carrega. Eventos autocontidos evitam que o consumidor precise chamar o publicador de volta.
+  4. **Modelo de dados:** transformar os substantivos em entidades com campos, tipos e restrições verificáveis, cada uma pertencente a um único serviço.
+  5. **Contrato de interface:** para cada serviço, as rotas HTTP com método, corpo, resposta, códigos de status e códigos de erro; para cada evento, o envelope e os dados. É a decisão que mais pesa na conformidade, porque é por ela que o oráculo enxerga o software.
+  6. **Convenções transversais:** o que vale para todos os serviços e não deve ser repetido em cada requisito: formato de erro, ordem geral de validação, atomicidade, formato de identificadores, datas e dinheiro, idempotência dos consumidores.
+  7. **Testabilidade:** garantir desde a análise que o sistema possa ser testado de forma automática e repetível. Isso inclui as URLs de outros serviços por variável de ambiente, as datas na requisição (sem relógio), uma rota de reinício de estado e identificadores determinísticos. Sem isso, o oráculo da F5 não consegue medir a conformidade.
+  8. **Regras de negócio:** decompor as regras em frases atômicas (uma regra, um fato), com valores e fórmulas. Escrever também as **permissões** ("a escolha não precisa ser a mais barata"), porque a ausência de regra é ambígua.
+  9. **Escopo negativo:** listar o que fica fora (banco de dados, autenticação, filas reais, retentativas...) para a LLM não inventar.
+  10. **Questões em aberto:** toda dúvida vira uma linha na Seção 12 e volta ao cliente.
+- **Saída:** glossário, mapa de serviços, mapa de comunicação, catálogo de eventos, modelo de dados, contrato, convenções, regras e escopo.
+- **Critério de saída:** nenhuma questão em aberto sem resposta do cliente, e toda interação entre serviços aparece no mapa de comunicação.
 
 ### F3 — Especificação no modelo ERL
 
@@ -92,8 +98,10 @@ Cada fase tem entrada, atividades, saída e um critério de saída. Uma fase só
 
 - **Entrada:** documento pronto.
 - **Atividades:**
-  1. O testador escreve **um teste automático por CA**, com o nome igual ao id do CA (`CA-RF03-07` → `test_CA_RF03_07`). O teste usa só a interface pública da Seção 5.
-  2. **Validação do oráculo:** quando houver uma implementação de referência, todos os testes precisam passar nela. Um arquivo vazio precisa passar em 0. E defeitos injetados de propósito (mutantes: um prazo trocado, uma ordem de validação invertida) precisam ser detectados. Sem isso, não dá para saber se uma falha é da LLM ou do teste.
+  1. O testador escreve **um teste automático por CA**, com o nome igual ao id do CA (`CA-E04-07` → `test_CA_E04_07`). O teste usa só o contrato público: rotas HTTP e eventos.
+  2. **Teste como caixa-preta distribuída:** o harness sobe cada serviço como um **processo separado**, em portas livres, com as URLs passadas por variável de ambiente, e conversa com eles só pela rede, como um cliente real. A infraestrutura que não é gerada pela LLM (no caso, o barramento de eventos) é fornecida pronta e serve também para observar os eventos publicados.
+  3. **Isolamento entre testes:** antes de cada teste o estado é reiniciado pela rota de reset. Se a rota falhar, o harness reinicia o processo do serviço; assim, um único defeito não derruba em cascata os demais critérios.
+  4. **Validação do oráculo:** a implementação de referência precisa passar em 100% dos testes; um sistema vazio (arquivos sem código) precisa passar em 0; e defeitos injetados de propósito (mutantes: uma fórmula trocada, uma ordem de validação invertida, uma regra de idempotência removida) precisam ser detectados. Sem isso, não dá para saber se uma falha é da LLM ou do teste.
 - **Saída:** suíte de testes de aceitação validada.
 - **Critério de saída:** um teste por CA, referência com 100% e todos os mutantes detectados.
 
@@ -137,9 +145,10 @@ Cada fase tem entrada, atividades, saída e um critério de saída. Uma fase só
 |---|---|---|
 | Modelo do documento | — | `entregaveis/2-modelo-documento-requisitos.md` |
 | Instruções de preenchimento e checklist | — | `entregaveis/3-instrucoes-preenchimento.md` |
-| Documento de requisitos preenchido | F3–F4 | `experimento/especificacoes/biblioteca-modelo-erl.md` |
+| Documento de requisitos preenchido | F3–F4 | `experimento/especificacoes/ERS-LOG-001.md` |
 | Oráculo (testes de aceitação) | F5 | `experimento/testes/test_aceitacao.py` |
-| Implementação de referência | F5 | `experimento/referencia/biblioteca.py` |
+| Implementação de referência | F5 | `experimento/referencia/servicos/` |
+| Harness (sobe os serviços como processos) e barramento fornecido | F5 | `experimento/testes/conftest.py`, `experimento/infra/barramento.py` |
 | Prompt fixo | F6 | `experimento/prompt.txt` |
 | Registro de execuções e conformidade | F7 | `experimento/resultados/execucoes.csv` |
 | Relatório do experimento | F8 | `entregaveis/4-relatorio-tecnico.md` |

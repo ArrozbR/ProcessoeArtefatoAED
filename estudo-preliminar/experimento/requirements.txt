@@ -1,0 +1,4 @@
+anthropic>=1.0
+pytest>=8
+pytest-timeout>=2.3
+scipy>=1.13
