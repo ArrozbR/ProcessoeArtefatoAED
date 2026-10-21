@@ -39,15 +39,75 @@ O código gerado pela LLM é executado localmente pelos testes. Rode numa máqui
 
 ## Demonstração
 
-Sobe os 5 microsserviços, o barramento e um gateway com uma página web para mostrar o fluxo completo: cotação, escolha da transportadora, atualizações da transportadora, rastreamento, notificações e eventos.
+A demonstração mostra o módulo de logística funcionando de verdade, com uma página web por cima. Por padrão, ela roda o **código gerado pela LLM** na execução `resultados/erl/01`, e não a implementação de referência: o que aparece na tela é o sistema que a IA escreveu a partir do documento de requisitos, sem nenhuma edição manual.
+
+### Como rodar
 
 ```bash
 cd experimento
-.venv/Scripts/python demo/subir.py                       # roda o código gerado pela LLM (resultados/erl/01)
-.venv/Scripts/python demo/subir.py --alvo referencia     # ou a implementação de referência
+.venv/Scripts/python demo/subir.py                                   # código gerado pela LLM (erl/01)
+.venv/Scripts/python demo/subir.py --alvo referencia                 # implementação de referência
+.venv/Scripts/python demo/subir.py --alvo resultados/narrativa/07    # qualquer outra execução
 ```
 
-Abra http://127.0.0.1:8000. O Swagger de cada serviço fica em `http://127.0.0.1:8101/docs` a `8105/docs` (endereços impressos no terminal). Ctrl+C encerra tudo.
+Depois, abra **http://127.0.0.1:8000** no navegador. **Ctrl+C** no terminal derruba tudo. A demonstração não usa a API do Claude nem gasta tokens.
+
+### O que sobe
+
+```mermaid
+flowchart LR
+    P[Página web<br/>navegador] --> G[Gateway :8000]
+    G --> TR[Transportadoras :8101]
+    G --> COT[Cotação :8102]
+    G --> ENV[Envios :8103]
+    G --> RAS[Rastreamento :8104]
+    G --> NOT[Notificações :8105]
+    G --> BUS[(Barramento :8100)]
+    COT --> TR
+    ENV --> COT
+    ENV --> BUS
+    BUS --> RAS
+    BUS --> NOT
+```
+
+| Processo | Porta | Papel |
+|---|---|---|
+| Barramento | 8100 | Repassa os eventos de Envios para Rastreamento e Notificações (infraestrutura fornecida) |
+| Transportadoras, Cotação, Envios, Rastreamento, Notificações | 8101 a 8105 | Os 5 microsserviços, cada um num processo separado, com o Swagger em `/docs` |
+| Gateway | 8000 | Serve a página e repassa as chamadas dela para os serviços |
+
+O gateway existe porque o navegador bloqueia uma página que chama vários endereços diferentes (CORS), e os serviços não liberam esse acesso. Ele funciona como um *API gateway*, padrão comum em microsserviços: um único ponto de entrada para os clientes. Ao subir, o script cadastra quatro transportadoras de exemplo (Rápida Log, Econômica Express, Expressa Já e SuLog). O código está em `experimento/demo/subir.py` e `experimento/demo/index.html`.
+
+### O que a página mostra
+
+| Área | O que acontece | Serviços envolvidos |
+|---|---|---|
+| Topo | Situação dos 6 processos (verde = no ar), **relógio simulado** e botão para reiniciar | todos |
+| 1. Cotação de frete | Escolha origem, destino e pacote. Aparece um cartão por transportadora elegível, com preço, prazo em dias úteis, data prevista e os selos "mais barata" e "mais rápida" | Cotação → Transportadoras |
+| 2. Cliente escolhe | O cliente escolhe **qualquer** transportadora (não precisa ser a mais barata) e finaliza a compra, criando o envio | Envios → Cotação |
+| 3. Painel da transportadora | Simula a transportadora informando as etapas. Os botões destacados são as transições válidas; os outros podem ser clicados para mostrar o sistema recusando a operação (HTTP 409) | Envios |
+| Eventos no barramento | Cada evento publicado por Envios, na ordem em que aconteceu | Barramento |
+| 4. Rastreamento | Linha do tempo do envio, com alerta de atraso e de entregue | Rastreamento (alimentado por eventos) |
+| Notificações | Mensagens enviadas ao cliente | Notificações (alimentado por eventos) |
+
+O sistema não lê a hora do computador: toda data chega na requisição (regra RT-06 do documento). Por isso a página tem um **relógio simulado**. Ele começa em segunda-feira, 02/03/2026, 09:00, avança sozinho a cada etapa da transportadora (3 horas, 8 horas ou 1 dia, à escolha) e pode avançar 1 dia pelo botão "+1 dia".
+
+### Roteiro sugerido para a apresentação
+
+1. **Cotação:** São Paulo → Rio de Janeiro com o pacote padrão. Aparecem duas opções; a Expressa Já não atende o RJ e fica de fora.
+2. **Escolha do cliente:** escolha a **Rápida Log**, que é a mais cara e a mais rápida. O sistema respeita a escolha.
+3. **Transição inválida:** logo depois de criar o envio, clique em "Entregar". Aparece `HTTP 409 — TRANSICAO_INVALIDA`, porque um envio não pode ser entregue antes de ser coletado.
+4. **Fluxo normal:** Coletar → Em trânsito → Saiu para entrega. Acompanhe o rastreamento, as notificações e os eventos atualizando sozinhos.
+5. **Devolução automática:** registre três "Falha na entrega", com "Saiu para entrega" entre elas. Na terceira, o envio vai sozinho para **DEVOLVIDO**.
+6. **Atraso:** em outro envio, avance o relógio com "+1 dia" até passar da data prevista. O rastreamento mostra o alerta de atraso.
+7. **Outras regras:** com um pacote de 50 kg, só a Econômica aparece (peso máximo). Com destino em Manaus, a cotação dá `CEP_FORA_DA_AREA`.
+
+### O que observar
+
+- **Notificações seletivas:** coletado e em trânsito aparecem no rastreamento, mas **não** geram notificação (regra RN-15).
+- **Eventos autocontidos:** Rastreamento e Notificações nunca chamam o serviço Envios; tudo o que eles mostram chega pelos eventos do barramento.
+- **Contrato respeitado:** a página só funciona porque o código gerado usa exatamente as rotas, os campos e os códigos de erro do documento de requisitos. Ela foi escrita a partir do documento, e não a partir do código gerado.
+- **Swagger:** para mostrar as APIs "por dentro", abra `http://127.0.0.1:8101/docs` a `http://127.0.0.1:8105/docs`.
 
 ## Estudo preliminar
 
